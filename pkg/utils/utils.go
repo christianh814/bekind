@@ -4,7 +4,6 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/kind/pkg/cluster"
 )
 
@@ -23,17 +22,4 @@ func GetDefaultRuntime() cluster.ProviderOption {
 		log.Warnf("ignoring unknown value %q for KIND_EXPERIMENTAL_PROVIDER", p)
 		return nil
 	}
-}
-
-// SetKubeConfig sets the kubeconfig path
-func SetKubeConfig(kubeconfig string) (string, error) {
-	// Set up KubeConfig Globally
-	if kubeconfig == "" {
-		kubeconfig = os.Getenv("KUBECONFIG")
-	}
-	if kubeconfig == "" {
-		return clientcmd.RecommendedHomeFile, nil // use default path(.kube/config)
-	}
-
-	return kubeconfig, nil
 }

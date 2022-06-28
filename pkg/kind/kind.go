@@ -71,7 +71,6 @@ func CreateKindCluster(name string, installtype string) error {
 	// Create a KIND instance and write out the kubeconfig in the specified location
 	err := Provider.Create(
 		name,
-		//cluster.CreateWithKubeconfigPath(kubeconfig),
 		cluster.CreateWithRawConfig([]byte(installtype)),
 		cluster.CreateWithDisplayUsage(false),
 		cluster.CreateWithDisplaySalutation(false),
