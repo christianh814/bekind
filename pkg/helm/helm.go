@@ -32,15 +32,19 @@ var settings *cli.EnvSettings
 
 func Install(namespace string, url string, repoName string, chartName string, releaseName string, args map[string]string) error {
 	os.Setenv("HELM_NAMESPACE", namespace)
+
 	settings = cli.New()
+
 	// Add helm repo
 	if err := RepoAdd(repoName, url); err != nil {
 		return err
 	}
+
 	// Update charts from the helm repo
 	if err := RepoUpdate(); err != nil {
 		return err
 	}
+
 	// Install charts
 	if err := InstallChart(releaseName, repoName, chartName, args); err != nil {
 		return err
@@ -209,12 +213,14 @@ func InstallChart(name, repo, chart string, args map[string]string) error {
 		}
 	}
 
+	// set and have helm create the namespace
 	client.Namespace = settings.Namespace()
-	release, err := client.Run(chartRequested, vals)
+	client.CreateNamespace = true
+
+	_, err = client.Run(chartRequested, vals)
 	if err != nil {
 		return err
 	}
-	log.Info(release.Manifest)
 
 	// if we are here, everything is ok
 	return nil
@@ -229,7 +235,5 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 }
 
 func debug(format string, v ...interface{}) {
-	log.SetOutput(ioutil.Discard)
 	format = fmt.Sprintf("[debug] %s\n", format)
-	log.Info(2, fmt.Sprintf(format, v...))
 }

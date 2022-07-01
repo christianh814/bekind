@@ -191,3 +191,35 @@ func SplitYAML(resources []byte) ([][]byte, error) {
 	}
 	return res, nil
 }
+
+// LabelWorkers will label the workers nodes as such
+func LabelWorkers(c kubernetes.Interface) error {
+	// First select the non control-plane nodes
+	workers, err := c.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{
+		LabelSelector: `!node-role.kubernetes.io/control-plane`,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Loop through and label these nodes as workers
+	for _, w := range workers.Items {
+		// set up the key and value for the worker
+		labelKey := "node-role.kubernetes.io/worker"
+		labelValue := ""
+
+		// Apply the labels on the Node object
+		labels := w.Labels
+		labels[labelKey] = labelValue
+		w.SetLabels(labels)
+
+		// Tell the API to update the node
+		_, err = c.CoreV1().Nodes().Update(context.TODO(), &w, v1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	// If we made it this far, then we're good
+	return nil
+}

@@ -18,6 +18,12 @@ nodes:
 - role: control-plane
 - role: control-plane
 - role: worker
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "haproxy=ingresshost"
   extraPortMappings:
   - containerPort: 80
     hostPort: 80
@@ -37,6 +43,12 @@ networking:
   serviceSubnet: "172.30.0.0/16"
 nodes:
 - role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "haproxy=ingresshost"
   extraPortMappings:
   - containerPort: 80
     hostPort: 80
@@ -82,4 +94,16 @@ func CreateKindCluster(name string, installtype string) error {
 	}
 
 	return nil
+}
+
+// DeleteKindCluster deletes KIND cluster based on the name given
+func DeleteKindCluster(name string, cfg string) error {
+	err := Provider.Delete(name, cfg)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }

@@ -58,6 +58,7 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bekind.yaml)")
+	rootCmd.PersistentFlags().String("name", "kind", "The name of the kind instance")
 }
 
 // initConfig reads in config file and ENV variables if set.
