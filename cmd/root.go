@@ -28,14 +28,12 @@ var KubeConfig string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "bekind",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:     "bekind",
+	Version: "v0.0.0",
+	Short:   "Installs an opinionated KIND cluster",
+	Long: `This command installs an opinionated KIND cluster.
+The KIND cluster is based on my own use cases and this command shouldn't
+be used by anyone else.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
