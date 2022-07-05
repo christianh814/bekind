@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/christianh814/bekind/pkg/utils"
+	"github.com/spf13/viper"
 	"sigs.k8s.io/kind/pkg/cluster"
 )
 
@@ -78,6 +79,12 @@ func CreateKindCluster(name string, installtype string) error {
 		installtype = KindSingleNode
 	default:
 		return errors.New("invalid install type")
+	}
+
+	// If a config file is given, try to use that. Garbage in, garbage out though
+	suppliedConfig := viper.GetString("kindConfig")
+	if suppliedConfig != "" {
+		installtype = suppliedConfig
 	}
 
 	// Create a KIND instance and write out the kubeconfig in the specified location
