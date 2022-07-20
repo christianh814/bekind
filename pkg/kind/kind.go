@@ -77,6 +77,8 @@ func CreateKindCluster(name string, installtype string) error {
 		installtype = KindFullStack
 	case "single":
 		installtype = KindSingleNode
+	case "custom":
+		installtype = viper.GetString("kindConfig")
 	default:
 		return errors.New("invalid install type")
 	}

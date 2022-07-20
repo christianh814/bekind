@@ -29,7 +29,7 @@ var KubeConfig string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "bekind",
-	Version: "v0.0.0",
+	Version: "v0.0.1",
 	Short:   "Installs an opinionated KIND cluster",
 	Long: `This command installs an opinionated KIND cluster.
 The KIND cluster is based on my own use cases and this command shouldn't
@@ -71,8 +71,8 @@ func initConfig() {
 
 		// Search config in home directory under the .bekind sub directory with name "config" (without extension).
 		viper.AddConfigPath(home + "/.bekind")
-		viper.SetConfigType("yaml")
 		viper.SetConfigName("config")
+		viper.SetConfigType("yaml")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

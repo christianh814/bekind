@@ -25,6 +25,7 @@ import (
 	"github.com/christianh814/bekind/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -50,11 +51,24 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 			log.Fatal(err)
 		}
 
+		// Get "domain" from the config file if it exists using viper
+		domain := "127.0.0.1.nip.io"
+		if viper.GetString("domain") != "" {
+			domain = viper.GetString("domain")
+		}
+
 		// Set Cluster type
 		if isSingleNode {
 			clusterType = "single"
 		} else {
 			clusterType = "full"
+		}
+
+		// Get the custom kind config from the config file
+		kindConfig := viper.GetString("kindConfig")
+		if kindConfig != "" {
+			clusterType = "custom"
+			log.Warn("Using custom kind config")
 		}
 
 		// Do we install argocd? Get from CLI
@@ -141,7 +155,7 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 				argoNamespace   = "argocd"
 				argoHelmArgs    = map[string]string{
 					// comma seperated values to set
-					"set": `server.ingress.enabled=true,server.ingress.hosts[0]=argocd.127.0.0.1.nip.io,server.ingress.annotations."kubernetes\.io/ingress\.class"=haproxy,server.ingress.annotations."ingress\.kubernetes\.io/ssl-passthrough"=true,server.ingress.annotations."ingress\.kubernetes\.io/force-ssl-redirect"=true`,
+					"set": `server.ingress.enabled=true,server.ingress.hosts[0]=argocd.` + domain + `,server.ingress.annotations."kubernetes\.io/ingress\.class"=haproxy,server.ingress.annotations."ingress\.kubernetes\.io/ssl-passthrough"=true,server.ingress.annotations."ingress\.kubernetes\.io/force-ssl-redirect"=true`,
 				}
 			)
 			log.Info("Installing Argo CD")
