@@ -49,7 +49,7 @@ nodes:
     kind: InitConfiguration
     nodeRegistration:
       kubeletExtraArgs:
-        node-labels: "haproxy=ingresshost"
+        node-labels: "nginx=ingresshost"
   extraPortMappings:
   - containerPort: 80
     hostPort: 80

@@ -122,14 +122,14 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 
 		// Install ingress controller
 		var (
-			ingressURL         = "https://haproxy-ingress.github.io/charts"
-			ingressRepoName    = "ingress"
-			ingressChartName   = "haproxy-ingress"
-			ingressReleaseName = "ingress"
+			ingressURL         = "https://kubernetes.github.io/ingress-nginx"
+			ingressRepoName    = "ingress-nginx"
+			ingressChartName   = "ingress-nginx"
+			ingressReleaseName = "nginx-ingress"
 			ingressNamespace   = "ingress-controller"
 			ingressHelmArgs    = map[string]string{
 				// comma seperated values to set
-				"set": "controller.hostNetwork=true,controller.nodeSelector.haproxy=ingresshost,controller.service.type=ClusterIP,controller.service.externalTrafficPolicy=",
+				"set": `controller.hostNetwork=true,controller.nodeSelector.nginx=ingresshost,controller.service.type=ClusterIP,controller.service.externalTrafficPolicy=,controller.extraArgs.enable-ssl-passthrough=`,
 			}
 		)
 		log.Info("Installing ingress controller")
@@ -139,7 +139,7 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 
 		// Wait for Ingress Controller rollout to happen
 		log.Info("Waiting for Ingress rollout")
-		if err = utils.WaitForDeployment(client, ingressNamespace, "ingress-haproxy-ingress", 600*time.Second); err != nil {
+		if err = utils.WaitForDeployment(client, ingressNamespace, "nginx-ingress-ingress-nginx-controller", 600*time.Second); err != nil {
 			log.Fatal(err)
 		}
 
@@ -155,7 +155,7 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 				argoNamespace   = "argocd"
 				argoHelmArgs    = map[string]string{
 					// comma seperated values to set
-					"set": `server.ingress.enabled=true,server.ingress.hosts[0]=argocd.` + domain + `,server.ingress.annotations."kubernetes\.io/ingress\.class"=haproxy,server.ingress.annotations."ingress\.kubernetes\.io/ssl-passthrough"=true,server.ingress.annotations."ingress\.kubernetes\.io/force-ssl-redirect"=true`,
+					"set": `server.ingress.enabled=true,server.ingress.hosts[0]=argocd.` + domain + `,server.ingress.ingressClassName="nginx",server.ingress.https=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/force-ssl-redirect"=true`,
 				}
 			)
 			log.Info("Installing Argo CD")
