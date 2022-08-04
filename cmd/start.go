@@ -55,6 +55,7 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 		domain := "127.0.0.1.nip.io"
 		if viper.GetString("domain") != "" {
 			domain = viper.GetString("domain")
+			log.Warn("Using custom domain for ingress")
 		}
 
 		// Set Cluster type
