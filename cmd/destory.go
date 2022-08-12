@@ -21,12 +21,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// stopCmd represents the stop command
-var stopCmd = &cobra.Command{
-	Use:   "stop",
-	Short: "Stops the custom Kind cluster",
-	Long: `Stops a running custom Kind cluster. Currently
-it only stops the named cluster or it will stop ones names "kind"
+// destroyCmd represents the destory command
+var destroyCmd = &cobra.Command{
+	Use:   "destroy",
+	Short: "Destroys the custom Kind cluster",
+	Long: `Destroys a running custom Kind cluster. Currently
+it only destroys the named cluster or it will destroy ones names "kind"
 if one isn't named.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Get clulster name from CLI
@@ -34,7 +34,7 @@ if one isn't named.`,
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Info("Stopping KIND cluster")
+		log.Info("Destroying KIND cluster")
 		if err := kind.DeleteKindCluster(clusterName, ""); err != nil {
 			log.Fatal(err)
 		}
@@ -42,15 +42,15 @@ if one isn't named.`,
 }
 
 func init() {
-	rootCmd.AddCommand(stopCmd)
+	rootCmd.AddCommand(destroyCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// stopCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// destroyCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// stopCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// destroyCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
