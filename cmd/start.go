@@ -29,6 +29,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// HC is the extra helmcharts to install, if provided
+var HC []struct {
+	Url       string
+	Repo      string
+	Chart     string
+	Release   string
+	Namespace string
+	Args      string
+}
+
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
@@ -98,6 +108,9 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 				log.Fatal(err)
 			}
 		}
+
+		// Grab any extra HelmCharts provided in the config file
+		viper.UnmarshalKey("helmCharts", &HC)
 
 		// Install Calico CNI
 		var (
@@ -188,6 +201,32 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 
 		argoUrl := fmt.Sprintf("https://%s", argoIngress.Spec.Rules[0].Host)
 		argoPass := string(argoSecret.Data["password"])
+
+		// Install Helm Charts if any exist in the config file
+		if len(HC) != 0 {
+			log.Info("Installing Additional HelmCharts from config file")
+			// Range over the helmCharts and try to install them
+			// 	TODO: Currently it's garbage in garbage out, if the user provides a bad chart it will fail
+			for _, v := range HC {
+
+				// Install HelmChart
+				var (
+					URL         = v.Url
+					RepoName    = v.Repo
+					ChartName   = v.Chart
+					ReleaseName = v.Release
+					Namespace   = v.Namespace
+					HelmArgs    = map[string]string{
+						// comma seperated values to set
+						"set": fmt.Sprintf(v.Args),
+					}
+				)
+				if err := helm.Install(Namespace, URL, RepoName, ChartName, ReleaseName, HelmArgs); err != nil {
+					log.Fatal(err)
+				}
+			}
+			//
+		}
 
 		//
 		log.Infof("Argo CD is available at %s username: admin password %s", argoUrl, argoPass)
