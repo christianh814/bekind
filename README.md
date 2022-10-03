@@ -1,9 +1,16 @@
 # bekind
 Personal tool that sets up a KIND cluster to my personal specifications
 
+Defaults to:
+
+* Binds to ports 80/443 on host
+* Installs NGINX Ingress controller
+* Installs latest version of Argo CD
+* "Multi Node" setup for KIND
+
 # Config
 
-Specific Config:
+You can customize the setup by providing a Specific Config (under `~/.bekind/config.yaml` or by providing `--config` to a YAML file):
 
 * `domain`: Domain to use for any ingresses this tool will autocreate (assuming wildcard DNS)
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out" currently
