@@ -10,7 +10,9 @@ Defaults to:
 
 # Config
 
-You can customize the setup by providing a Specific Config (under `~/.bekind/config.yaml` or by providing `--config` to a YAML file):
+You can customize the setup by providing a Specific Config (under `~/.bekind/config.yaml` or by providing `--config` to a YAML file)
+
+For example:
 
 * `domain`: Domain to use for any ingresses this tool will autocreate (assuming wildcard DNS)
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out" currently
