@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -38,6 +39,9 @@ var HC []struct {
 	Namespace string
 	Args      string
 }
+
+// disablecni disables the CNI plugin in the kind cluster
+var disablecni = false
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
@@ -82,6 +86,18 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 			log.Warn("Using custom kind config")
 		}
 
+		// Set the kindConfig as the config file for Viper
+		viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig)))
+
+		// Check to see if the CNI is disabled
+		if viper.Get("networking.disableDefaultCNI") != nil {
+			disablecni = viper.Get("networking.disableDefaultCNI").(bool)
+		}
+
+		// Set config file back to default for Viper
+		viper.SetConfigFile(cfgFile)
+		viper.ReadInConfig()
+
 		// Do we install argocd? Get from CLI
 		installArgo, err := cmd.Flags().GetBool("argocd")
 		if err != nil {
@@ -112,26 +128,33 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 		// Grab any extra HelmCharts provided in the config file
 		viper.UnmarshalKey("helmCharts", &HC)
 
-		// Install Calico CNI
-		var (
-			calicoUrl         = "https://projectcalico.docs.tigera.io/charts"
-			calicoRepoName    = "projectcalico"
-			calicoReleaseName = "calico"
-			calicoChartName   = "tigera-operator"
-			calicoNamespace   = "calico-system"
-			calicoHelmArgs    = map[string]string{
-				"set": `installation.calicoNetwork.ipPools[0].blockSize=26,installation.calicoNetwork.ipPools[0].cidr=10.254.0.0/16,installation.calicoNetwork.ipPools[0].encapsulation=VXLANCrossSubnet,installation.calicoNetwork.ipPools[0].natOutgoing=Enabled,installation.calicoNetwork.ipPools[0].nodeSelector=all()`,
-			}
-		)
-		log.Info("Installing Calico CNI")
-		if err := helm.Install(calicoNamespace, calicoUrl, calicoRepoName, calicoChartName, calicoReleaseName, calicoHelmArgs); err != nil {
-			log.Fatal(err)
-		}
+		// Install Default bekind CNI if CNI is disabled
+		if disablecni {
 
-		// Wait for Calico rollout to happen
-		log.Info("Waiting for Calico rollout")
-		if err = utils.WaitForDeployment(client, calicoNamespace, "calico-typha", 600*time.Second); err != nil {
-			log.Fatal(err)
+			// Install Calico CNI
+			var (
+				calicoUrl         = "https://projectcalico.docs.tigera.io/charts"
+				calicoRepoName    = "projectcalico"
+				calicoReleaseName = "calico"
+				calicoChartName   = "tigera-operator"
+				calicoNamespace   = "calico-system"
+				calicoHelmArgs    = map[string]string{
+					"set": `installation.calicoNetwork.ipPools[0].blockSize=26,installation.calicoNetwork.ipPools[0].cidr=10.254.0.0/16,installation.calicoNetwork.ipPools[0].encapsulation=VXLANCrossSubnet,installation.calicoNetwork.ipPools[0].natOutgoing=Enabled,installation.calicoNetwork.ipPools[0].nodeSelector=all()`,
+				}
+			)
+			log.Info("Installing Calico CNI")
+			if err := helm.Install(calicoNamespace, calicoUrl, calicoRepoName, calicoChartName, calicoReleaseName, calicoHelmArgs); err != nil {
+				log.Fatal(err)
+			}
+
+			// Wait for Calico rollout to happen
+			log.Info("Waiting for Calico rollout")
+			if err = utils.WaitForDeployment(client, calicoNamespace, "calico-typha", 600*time.Second); err != nil {
+				log.Fatal(err)
+			}
+
+		} else {
+			log.Info("Installing Default KIND CNI")
 		}
 
 		// Install ingress controller
