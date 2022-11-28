@@ -26,7 +26,7 @@ helmCharts:
     chart: "argo-rollouts"
     release: "argo-rollouts"
     namespace: "argo-rollouts"
-    args: 'installCRDs=true'
+    args: 'installCRDs=true,controller.image.pullPolicy=IfNotPresent'
 kindConfig: |
   kind: Cluster
   apiVersion: kind.x-k8s.io/v1alpha4
