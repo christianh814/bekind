@@ -60,7 +60,7 @@ nodes:
 `
 
 // Set the default Kind Image version
-var KindImageVersion string = "kindest/node:v1.24.2"
+var KindImageVersion string = "kindest/node:v1.26.0"
 
 // We are using the same kind of provider for this whole package
 var Provider *cluster.Provider = cluster.NewProvider(
