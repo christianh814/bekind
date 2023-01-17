@@ -15,11 +15,13 @@ You can customize the setup by providing a Specific Config (under `~/.bekind/con
 For example:
 
 * `domain`: Domain to use for any ingresses this tool will autocreate (assuming wildcard DNS)
+* `kindImageVersion`: The KIND Node image to use (You can find a list [on dockerhub](https://hub.docker.com/r/kindest/node/tags))
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out" currently
 * `helmCharts`: Different Helm Charts to install on startup. "garbage in/garbage out"
 
 ```yaml
 domain: "7f000001.nip.io"
+kindImageVersion: "kindest/node:v1.26.0"
 helmCharts:
   - url: "https://argoproj.github.io/argo-helm"
     repo: "argo"

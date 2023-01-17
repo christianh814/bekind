@@ -59,16 +59,13 @@ nodes:
     listenAddress: 0.0.0.0
 `
 
-// Set the default Kind Image version
-var KindImageVersion string = "kindest/node:v1.26.0"
-
 // We are using the same kind of provider for this whole package
 var Provider *cluster.Provider = cluster.NewProvider(
 	utils.GetDefaultRuntime(),
 )
 
 // CreateKindCluster creates KIND cluster
-func CreateKindCluster(name string, installtype string) error {
+func CreateKindCluster(name string, installtype string, kindImage string) error {
 	// Check to see what kind of install type we want
 	switch installtype {
 	case "":
@@ -95,7 +92,7 @@ func CreateKindCluster(name string, installtype string) error {
 		cluster.CreateWithRawConfig([]byte(installtype)),
 		cluster.CreateWithDisplayUsage(false),
 		cluster.CreateWithDisplaySalutation(false),
-		cluster.CreateWithNodeImage(KindImageVersion),
+		cluster.CreateWithNodeImage(kindImage),
 	)
 
 	if err != nil {

@@ -41,7 +41,13 @@ var HC []struct {
 }
 
 // disablecni disables the CNI plugin in the kind cluster
-var disablecni = false
+var disablecni bool = false
+
+// Set Default domain
+var Domain string = "127.0.0.1.nip.io"
+
+// Set the default Kind Image version
+var KindImageVersion string = "kindest/node:v1.26.0"
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
@@ -66,10 +72,15 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 		}
 
 		// Get "domain" from the config file if it exists using viper
-		domain := "127.0.0.1.nip.io"
 		if viper.GetString("domain") != "" {
-			domain = viper.GetString("domain")
+			Domain = viper.GetString("domain")
 			log.Warn("Using custom domain for ingress")
+		}
+
+		// Get "kindImageVersion" from the config file if it exists using viper
+		if viper.GetString("kindImageVersion") != "" {
+			KindImageVersion = viper.GetString("kindImageVersion")
+			log.Warn("Using custom KIND node image ")
 		}
 
 		// Set Cluster type
@@ -105,7 +116,7 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 		}
 
 		// Try and start the kind cluster
-		err = kind.CreateKindCluster(clusterName, clusterType)
+		err = kind.CreateKindCluster(clusterName, clusterType, KindImageVersion)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -192,7 +203,7 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 				argoNamespace   = "argocd"
 				argoHelmArgs    = map[string]string{
 					// comma seperated values to set
-					"set": `server.ingress.enabled=true,server.ingress.hosts[0]=argocd.` + domain + `,server.ingress.ingressClassName="nginx",server.ingress.https=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/force-ssl-redirect"=true`,
+					"set": `server.ingress.enabled=true,server.ingress.hosts[0]=argocd.` + Domain + `,server.ingress.ingressClassName="nginx",server.ingress.https=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/force-ssl-redirect"=true`,
 				}
 			)
 			log.Info("Installing Argo CD")
