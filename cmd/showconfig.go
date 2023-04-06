@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/usrbinkat/bekinder/pkg/config"
+	"github.com/usrbinkat/bekind/pkg/config"
 )
 
 // showConfigCmd represents the showconfig command

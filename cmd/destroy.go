@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/usrbinkat/bekinder/pkg/clusterops"
+	"github.com/usrbinkat/bekind/pkg/clusterops"
 )
 
 // destroyCmd represents the destroy command
