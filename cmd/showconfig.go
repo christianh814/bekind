@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/usrbinkat/bekind/pkg/config"
+	"github.com/usrbinkat/bekind/pkg/kubeconfig"
 )
 
 // showConfigCmd represents the showconfig command
@@ -49,5 +49,5 @@ func showConfig() {
 	}
 
 	// Display the configuration file used
-	fmt.Printf("\nConfiguration file used: %s\n", config.GetConfigFile())
+	fmt.Printf("\nConfiguration file used: %s\n", kubeconfig.GetConfigFile())
 }

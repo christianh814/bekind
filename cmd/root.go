@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/usrbinkat/bekind/pkg/config"
+	"github.com/usrbinkat/bekind/pkg/kubeconfig"
 )
 
 var (
@@ -60,7 +60,7 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if err := config.InitConfig(cfgFile); err != nil {
+	if err := kubeconfig.InitConfig(cfgFile); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
