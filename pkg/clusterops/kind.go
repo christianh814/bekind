@@ -3,7 +3,7 @@ package clusterops
 import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	clusterops "github.com/usrbinkat/bekind/pkg/cluster"
+	"github.com/usrbinkat/bekind/pkg/clusterops"
 	"sigs.k8s.io/kind/pkg/cluster"
 )
 
