@@ -20,30 +20,28 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+
+	"github.com/usrbinkat/bekinder/pkg/config"
 )
 
-var cfgFile string
-var KubeConfig string
+var (
+	cfgFile string
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     "bekind",
-	Version: "v0.0.7",
-	Short:   "Installs an opinionated KIND cluster",
-	Long: `This command installs an opinionated KIND cluster.
-The KIND cluster is based on my own use cases and this command shouldn't
-be used by anyone else.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Use:   "bekind",
+	Short: "A CLI tool to manage Kubernetes clusters using KIND and Helm",
+	Long: `bekind is a CLI tool that helps you create, manage, and destroy
+Kubernetes clusters using KIND and Helm. It simplifies the process of
+setting up a cluster and deploying applications with Helm charts.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }
@@ -54,34 +52,16 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bekind.yaml)")
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bekind/config.yaml)")
-	rootCmd.PersistentFlags().String("name", "kind", "The name of the kind instance")
+	// Cobra also supports local flags, which will only run
+	// when this action is called directly.
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		// Search config in home directory under the .bekind sub directory with name "config" (without extension).
-		viper.AddConfigPath(home + "/.bekind/")
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
+	if err := config.InitConfig(cfgFile); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in. Only displaying an error if there was a problem reading the file.
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-		}
-	}
-
 }

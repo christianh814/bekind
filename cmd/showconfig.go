@@ -1,5 +1,5 @@
 /*
-Copyright © 2023 Christian Hernandez <christian@chernand.io>
+Copyright © 2022 Christian Hernandez christian@chernand.io
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,32 +18,36 @@ package cmd
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
+
+	"github.com/usrbinkat/bekinder/pkg/config"
 )
 
-// showconfigCmd represents the showconfig command
-var showconfigCmd = &cobra.Command{
-	Use:     "showconfig",
-	Aliases: []string{"sc", "showConfig", "configShow"},
-	Short:   "Prints out the config that will be used",
-	Long: `Prints out the config that will be used by
-bekind to set up your local Kind cluster.`,
+// showConfigCmd represents the showconfig command
+var showConfigCmd = &cobra.Command{
+	Use:   "showconfig",
+	Short: "Displays the current configuration",
+	Long:  `Displays the current configuration used by bekind.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Marshal in the entire config file int a byteslice and check for errors
-		byteSlice, err := yaml.Marshal(viper.AllSettings())
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Print it out
-		fmt.Print(string(byteSlice))
+		showConfig()
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(showconfigCmd)
+	rootCmd.AddCommand(showConfigCmd)
+}
+
+// showConfig prints the current configuration
+func showConfig() {
+	// Get all the keys from the Viper configuration
+	keys := viper.AllKeys()
+
+	fmt.Println("Current configuration:")
+	for _, key := range keys {
+		fmt.Printf("%s: %v\n", key, viper.Get(key))
+	}
+
+	// Display the configuration file used
+	fmt.Printf("\nConfiguration file used: %s\n", config.GetConfigFile())
 }
