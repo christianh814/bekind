@@ -48,7 +48,7 @@ func init() {
 func destroyCluster() error {
 	clusterName := viper.GetString("clusterName")
 
-	err := clusterops.DeleteKindCluster(clusterName, "")
+	err := clusterops.DeleteKindCluster(clusterName)
 	if err != nil {
 		return fmt.Errorf("failed to destroy KIND cluster: %w", err)
 	}

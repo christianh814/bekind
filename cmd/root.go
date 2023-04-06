@@ -60,8 +60,13 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if err := kubeconfig.InitConfig(cfgFile); err != nil {
-		fmt.Println(err)
+	if cfgFile == "" {
+		cfgFile = kubeconfig.GetKubeConfigPath()
+	}
+
+	_, err := kubeconfig.GetKubeConfig(cfgFile)
+	if err != nil {
+		fmt.Println("Error initializing the kubeconfig:", err)
 		os.Exit(1)
 	}
 }
