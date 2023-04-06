@@ -1,4 +1,4 @@
-package cluster
+package clusterops
 
 import (
 	"github.com/pkg/errors"

@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/usrbinkat/bekind/pkg/cluster"
+	"github.com/usrbinkat/bekind/pkg/clusterops"
 )
 
 // createCmd represents the create command
@@ -55,7 +55,7 @@ func createCluster() error {
 	installType := viper.GetString("installType")
 	kindImage := viper.GetString("kindImage")
 
-	err := cluster.CreateKindCluster(clusterName, installType, kindImage)
+	err := clusterops.CreateKindCluster(clusterName, installType, kindImage)
 	if err != nil {
 		return fmt.Errorf("failed to create KIND cluster: %w", err)
 	}

@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/usrbinkat/bekind/pkg/cluster"
+	clusterops "github.com/usrbinkat/bekind/pkg/cluster"
 )
 
 // destroyCmd represents the destroy command
@@ -48,7 +48,7 @@ func init() {
 func destroyCluster() error {
 	clusterName := viper.GetString("clusterName")
 
-	err := cluster.DeleteKindCluster(clusterName, "")
+	err := clusterops.DeleteKindCluster(clusterName, "")
 	if err != nil {
 		return fmt.Errorf("failed to destroy KIND cluster: %w", err)
 	}

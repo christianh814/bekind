@@ -12,7 +12,7 @@ all: build
 build: $(BINARY_NAME)
 
 $(BINARY_NAME): $(GO_FILES)
-	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/bekind
+	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/
 
 run: build
 	./$(BINARY_NAME)
