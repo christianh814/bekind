@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/christianh814/bekind/cmd"
+import "github.com/usrbinkat/bekind/cmd"
 
 func main() {
 	cmd.Execute()
