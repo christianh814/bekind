@@ -49,5 +49,5 @@ func showConfig() {
 	}
 
 	// Display the configuration file used
-	fmt.Printf("\nConfiguration file used: %s\n", kubeconfig.GetConfigFile())
+	fmt.Printf("\nConfiguration file used: %s\n", kubeconfig.GetKubeConfigPath())
 }

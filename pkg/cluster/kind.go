@@ -1,56 +1,51 @@
 package cluster
 
 import (
-	"errors"
-
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	clusterops "github.com/usrbinkat/bekind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cluster"
-	"sigs.k8s.io/kind/pkg/cluster/internal/runtime"
 )
 
-var Provider *cluster.Provider = cluster.NewProvider(
-	cluster.ProviderWithDefault(runtime.ProviderFor(runtime.Docker)),
-)
+var Provider *cluster.Provider = cluster.NewProvider()
 
-func CreateKindCluster(name string, installtype string, kindImage string) error {
-	switch installtype {
-	case "":
-		installtype = KindSingleNode
-	case "full":
-		installtype = KindFullStack
-	case "single":
-		installtype = KindSingleNode
-	case "custom":
-		installtype = viper.GetString("kindConfig")
-	default:
-		return errors.New("invalid install type")
-	}
-
-	suppliedConfig := viper.GetString("kindConfig")
-	if suppliedConfig != "" {
-		installtype = suppliedConfig
-	}
-
-	err := Provider.Create(
-		name,
-		cluster.CreateWithRawConfig([]byte(installtype)),
-		cluster.CreateWithDisplayUsage(false),
-		cluster.CreateWithDisplaySalutation(false),
-		cluster.CreateWithNodeImage(kindImage),
-	)
-
+// CreateKindCluster creates a KIND cluster using the provided configuration
+func CreateKindCluster(name string, installType string, kindImage string) error {
+	config, err := clusterops.GetKindConfig(installType, kindImage)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get KIND configuration")
+	}
+
+	err = Provider.Create(name, config)
+	if err != nil {
+		return errors.Wrap(err, "failed to create KIND cluster")
+	}
+
+	// Save the kubeconfig for the newly created cluster
+	kubeconfig, err := Provider.KubeConfig(name, false)
+	if err != nil {
+		return errors.Wrap(err, "failed to get kubeconfig for the KIND cluster")
+	}
+
+	err = clusterops.SaveKubeConfig(kubeconfig, name)
+	if err != nil {
+		return errors.Wrap(err, "failed to save kubeconfig")
+	}
+
+	// Patch the cluster with custom configurations
+	err = clusterops.PatchCluster(viper.GetString("kubeconfig"))
+	if err != nil {
+		return errors.Wrap(err, "failed to patch the cluster")
 	}
 
 	return nil
 }
 
-func DeleteKindCluster(name string, cfg string) error {
-	err := Provider.Delete(name, cfg)
-
+// DeleteKindCluster deletes a KIND cluster with the specified name
+func DeleteKindCluster(name string) error {
+	err := Provider.Delete(name, "")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete the KIND cluster")
 	}
 
 	return nil
