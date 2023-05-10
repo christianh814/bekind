@@ -244,18 +244,11 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 			for _, v := range HC {
 
 				// Install HelmChart
-				var (
-					URL         = v.Url
-					RepoName    = v.Repo
-					ChartName   = v.Chart
-					ReleaseName = v.Release
-					Namespace   = v.Namespace
-					HelmArgs    = map[string]string{
-						// comma seperated values to set
-						"set": fmt.Sprintf(v.Args),
-					}
-				)
-				if err := helm.Install(Namespace, URL, RepoName, ChartName, ReleaseName, HelmArgs); err != nil {
+				HelmArgs := map[string]string{
+					// comma seperated values to set
+					"set": fmt.Sprintf(v.Args),
+				}
+				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, HelmArgs); err != nil {
 					log.Fatal(err)
 				}
 			}
