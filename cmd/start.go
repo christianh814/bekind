@@ -47,7 +47,7 @@ var disablecni bool = false
 var Domain string = "127.0.0.1.nip.io"
 
 // Set the default Kind Image version
-var KindImageVersion string = "kindest/node:v1.26.3"
+var KindImageVersion string = "kindest/node:v1.27.1"
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
