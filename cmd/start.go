@@ -27,6 +27,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -191,6 +193,12 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 			log.Fatal(err)
 		}
 
+		// Set up some default vars for Argo CD installation
+		var argoSecret *v1.Secret
+		var argoIngress *networkingv1.Ingress
+		var argoUrl string
+		var argoPass string
+
 		// Install Argo CD
 		if installArgo {
 
@@ -217,24 +225,24 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 				log.Fatal(err)
 			}
 
+			// Get argo password
+			argoSecret, err = client.CoreV1().Secrets("argocd").Get(context.TODO(), "argocd-initial-admin-secret", metav1.GetOptions{})
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Get argo ingress
+			argoIngress, err = client.NetworkingV1().Ingresses("argocd").Get(context.TODO(), "argocd-server", metav1.GetOptions{})
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			argoUrl = fmt.Sprintf("https://%s", argoIngress.Spec.Rules[0].Host)
+			argoPass = string(argoSecret.Data["password"])
+
 		} else {
-			log.Info("Skipping Argo CD installation")
+			log.Warn("Skipping Argo CD installation")
 		}
-
-		// Get argo password
-		argoSecret, err := client.CoreV1().Secrets("argocd").Get(context.TODO(), "argocd-initial-admin-secret", metav1.GetOptions{})
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Get argo ingress
-		argoIngress, err := client.NetworkingV1().Ingresses("argocd").Get(context.TODO(), "argocd-server", metav1.GetOptions{})
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		argoUrl := fmt.Sprintf("https://%s", argoIngress.Spec.Rules[0].Host)
-		argoPass := string(argoSecret.Data["password"])
 
 		// Install Helm Charts if any exist in the config file
 		if len(HC) != 0 {
@@ -256,7 +264,12 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 		}
 
 		//
-		log.Infof("Argo CD is available at %s username: admin password %s", argoUrl, argoPass)
+		if installArgo {
+			log.Infof("Argo CD is available at %s username: admin password %s", argoUrl, argoPass)
+		} else {
+			log.Infof("KIND cluster %s is ready", clusterName)
+
+		}
 	},
 }
 
