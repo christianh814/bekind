@@ -92,6 +92,9 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 			clusterType = "full"
 		}
 
+		// Get images to load from the config file. NOTE: Images must exist on the host FIRST.
+		dockerImages := viper.GetStringSlice("loadDockerImages")
+
 		// Get the custom kind config from the config file
 		kindConfig := viper.GetString("kindConfig")
 		if kindConfig != "" {
@@ -261,6 +264,14 @@ it installs Argo CD and an HAProxy Ingress controller.`,
 				}
 			}
 			//
+		}
+
+		// Load images into the cluster
+		if len(dockerImages) != 0 {
+			log.Info("Loading Images")
+			if err := kind.LoadDockerImage(dockerImages, clusterName); err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		//
