@@ -18,6 +18,7 @@ For example:
 * `kindImageVersion`: The KIND Node image to use (You can find a list [on dockerhub](https://hub.docker.com/r/kindest/node/tags))
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out" currently
 * `helmCharts`: Different Helm Charts to install on startup. "garbage in/garbage out"
+* `loadDockerImages`: List of images to load onto the nodes (**NOTE** images must exist locally)
 
 ```yaml
 domain: "7f000001.nip.io"
@@ -45,4 +46,7 @@ kindConfig: |
     - containerPort: 443
       hostPort: 443
       listenAddress: 0.0.0.0
+loadDockerImages:
+  - quay.io/christianh814/simple-go:latest
+  - christianh814/gobg:green
 ```
