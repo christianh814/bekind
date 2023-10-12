@@ -1,0 +1,35 @@
+domain: "7f000001.nip.io"
+#kindImageVersion: "kindest/node:v1.27.1"
+kindImageVersion: "kindest/node:v1.28.0"
+helmCharts:
+  - url: "https://argoproj.github.io/argo-helm"
+    repo: "argo"
+    chart: "argo-rollouts"
+    release: "argo-rollouts"
+    namespace: "argo-rollouts"
+    args: 'installCRDs=true,controller.image.pullPolicy=IfNotPresent'
+kindConfig: |
+  kind: Cluster
+  apiVersion: kind.x-k8s.io/v1alpha4
+  networking:
+    #disableDefaultCNI: True
+    podSubnet: "10.254.0.0/16"
+    serviceSubnet: "172.30.0.0/16"
+  nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "nginx=ingresshost"
+    extraPortMappings:
+    - containerPort: 80
+      hostPort: 80
+      listenAddress: 0.0.0.0
+    - containerPort: 443
+      hostPort: 443
+      listenAddress: 0.0.0.0
+loadDockerImages:
+  - gitcloner:v0.0.1
+  - ansible-runner:v0.0.1
