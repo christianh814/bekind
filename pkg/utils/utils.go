@@ -105,10 +105,11 @@ func DoSSA(ctx context.Context, cfg *rest.Config, yaml []byte) error {
 	return err
 }
 
-//check to see if the named deployment is running
-func IsDeploymentRunning(c kubernetes.Interface, ns string, depl string) wait.ConditionFunc {
+// check to see if the named deployment is running
+// func IsDeploymentRunning(c kubernetes.Interface, ns string, depl string) wait.ConditionFunc {
+func IsDeploymentRunning(c kubernetes.Interface, ns string, depl string) wait.ConditionWithContextFunc {
 
-	return func() (bool, error) {
+	return func(context.Context) (bool, error) {
 
 		// Get the named deployment
 		dep, err := c.AppsV1().Deployments(ns).Get(context.TODO(), depl, v1.GetOptions{})
@@ -135,7 +136,9 @@ func IsDeploymentRunning(c kubernetes.Interface, ns string, depl string) wait.Co
 
 // Poll up to timeout seconds for pod to enter running state.
 func WaitForDeployment(c kubernetes.Interface, namespace string, deployment string, timeout time.Duration) error {
-	return wait.PollImmediate(5*time.Second, timeout, IsDeploymentRunning(c, namespace, deployment))
+	// return wait.PollImmediate(5*time.Second, timeout, IsDeploymentRunning(c, namespace, deployment))
+	immediate := true
+	return wait.PollUntilContextTimeout(context.TODO(), 5*time.Second, timeout, immediate, IsDeploymentRunning(c, namespace, deployment))
 }
 
 // NewClient returns a kubernetes.Interface

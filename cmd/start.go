@@ -125,7 +125,6 @@ on the configuration file that is passed`,
 		viper.UnmarshalKey("helmCharts", &HC)
 
 		// Special conditions for Argo CD
-		// Set up some default vars for Argo CD installation
 		var argoSecret *v1.Secret
 		var argoIngress *networkingv1.Ingress
 		var argoUrl string
@@ -142,6 +141,7 @@ on the configuration file that is passed`,
 					// comma seperated values to set
 					"set": fmt.Sprintf(v.Args),
 				}
+				log.Infof("Installing %s/%s from %s", v.Repo, v.Chart, v.Url)
 				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, HelmArgs); err != nil {
 					log.Fatal(err)
 				}
@@ -186,7 +186,7 @@ on the configuration file that is passed`,
 
 		// Load images into the cluster
 		if len(dockerImages) != 0 {
-			log.Info("Loading Images")
+			log.Info("Loading Images in KIND cluster")
 			if err := kind.LoadDockerImage(dockerImages, clusterName); err != nil {
 				log.Fatal(err)
 			}
