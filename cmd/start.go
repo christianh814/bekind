@@ -90,7 +90,7 @@ on the configuration file that is passed`,
 		}
 		viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig)))
 
-		// Check to see if the CNI is disabled
+		// Check to see if workers are being used. This is used to label the workers as such. This is based on inspecting the kindConfig
 		var usesWorkers bool = false
 		if len(viper.GetStringSlice("nodes")) > 1 {
 			usesWorkers = true

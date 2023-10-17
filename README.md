@@ -1,5 +1,4 @@
-# bekind
-Personal tool that sets up a KIND cluster to my personal specifications
+# BeKind
 
 Installs a K8S cluster using KIND, and does a number of post deployment steps.
 
@@ -20,7 +19,7 @@ For example:
 * `kindImageVersion`: The KIND Node image to use (You can find a list [on dockerhub](https://hub.docker.com/r/kindest/node/tags)). You can also supply your own public image or a local image.
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out".
 * `helmCharts`: Different Helm Charts to install on startup. "garbage in/garbage out"
-* `loadDockerImages`: List of images to load onto the nodes (**NOTE** images must exist locally)
+* `loadDockerImages`: List of images to load onto the nodes (**NOTE** images must exist locally). Only `docker` is supported (see [KIND upstream issue](https://github.com/kubernetes-sigs/kind/pull/3109))
 
 ```yaml
 domain: "7f000001.nip.io"
