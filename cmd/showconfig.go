@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 // showconfigCmd represents the showconfig command
@@ -41,6 +41,7 @@ bekind to set up your local Kind cluster.`,
 
 		// Print it out
 		fmt.Print(string(byteSlice))
+
 	},
 }
 

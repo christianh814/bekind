@@ -31,9 +31,8 @@ var rootCmd = &cobra.Command{
 	Use:     "bekind",
 	Version: "v0.1.0",
 	Short:   "Installs an opinionated KIND cluster",
-	Long: `This command installs an opinionated KIND cluster.
-The KIND cluster is based on my own use cases and this command shouldn't
-be used by anyone else.`,
+	Long: `This command installs a KIND cluster.
+The KIND cluster is then configured based on what configuration file is passed.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
