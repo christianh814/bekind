@@ -122,7 +122,10 @@ on the configuration file that is passed`,
 		}
 
 		// Grab HelmCharts provided in the config file
-		viper.UnmarshalKey("helmCharts", &HC)
+		err = viper.UnmarshalKey("helmCharts", &HC)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		// Special conditions for Argo CD
 		var argoSecret *v1.Secret
