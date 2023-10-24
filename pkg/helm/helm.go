@@ -29,7 +29,7 @@ import (
 
 var settings *cli.EnvSettings
 
-func Install(namespace string, url string, repoName string, chartName string, releaseName string, wait bool, args map[string]string) error {
+func Install(namespace string, url string, repoName string, chartName string, releaseName string, version string, wait bool, args map[string]string) error {
 	// Check to see if an OCI registry is being used
 	// TODO: Add support for installing OCI registries
 	if strings.HasPrefix(url, "oci://") {
@@ -52,7 +52,7 @@ func Install(namespace string, url string, repoName string, chartName string, re
 	}
 
 	// Install charts
-	if err := InstallChart(releaseName, repoName, chartName, wait, args); err != nil {
+	if err := InstallChart(releaseName, repoName, chartName, version, wait, args); err != nil {
 		return err
 	}
 
@@ -161,7 +161,7 @@ func RepoUpdate() error {
 }
 
 // InstallChart
-func InstallChart(name, repo, chart string, wait bool, args map[string]string) error {
+func InstallChart(name, repo, chart string, version string, wait bool, args map[string]string) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
@@ -171,7 +171,12 @@ func InstallChart(name, repo, chart string, wait bool, args map[string]string) e
 	if client.Version == "" && client.Devel {
 		client.Version = ">0.0.0-0"
 	}
-	//name, chart, err := client.NameAndChart(args)
+
+	// Set version if provided
+	if version != "" {
+		client.Version = version
+	}
+
 	client.ReleaseName = name
 	cp, err := client.ChartPathOptions.LocateChart(fmt.Sprintf("%s/%s", repo, chart), settings)
 	if err != nil {

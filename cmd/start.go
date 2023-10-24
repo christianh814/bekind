@@ -40,6 +40,7 @@ var HC []struct {
 	Namespace string
 	Args      string
 	Wait      bool
+	Version   string
 }
 
 // Set Default domain
@@ -146,7 +147,7 @@ on the configuration file that is passed`,
 				}
 				log.Infof("Installing %s/%s from %s", v.Repo, v.Chart, v.Url)
 
-				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, v.Wait, HelmArgs); err != nil {
+				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, v.Version, v.Wait, HelmArgs); err != nil {
 					log.Fatal(err)
 				}
 
