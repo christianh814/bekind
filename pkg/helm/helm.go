@@ -30,6 +30,13 @@ import (
 var settings *cli.EnvSettings
 
 func Install(namespace string, url string, repoName string, chartName string, releaseName string, args map[string]string) error {
+	// Check to see if an OCI registry is being used
+	// TODO: Add support for installing OCI registries
+	if strings.HasPrefix(url, "oci://") {
+		return InstallOCI(namespace, url, releaseName, args)
+	}
+
+	// Set the namespace
 	os.Setenv("HELM_NAMESPACE", namespace)
 
 	settings = cli.New()
@@ -51,6 +58,12 @@ func Install(namespace string, url string, repoName string, chartName string, re
 
 	// if we are here, everything is ok
 	return nil
+}
+
+// InstallOCI installs a chart from an OCI registry
+func InstallOCI(namespace string, url string, releaseName string, args map[string]string) error {
+	// Just return an error for now as a placeholder
+	return errors.New("OCI registries are not supported")
 }
 
 // RepoAdd adds repo with given name and url
@@ -202,6 +215,7 @@ func InstallChart(name, repo, chart string, args map[string]string) error {
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
+					RegistryClient:   client.GetRegistryClient(),
 				}
 				if err := man.Update(); err != nil {
 					return err
