@@ -29,7 +29,7 @@ import (
 
 var settings *cli.EnvSettings
 
-func Install(namespace string, url string, repoName string, chartName string, releaseName string, args map[string]string) error {
+func Install(namespace string, url string, repoName string, chartName string, releaseName string, wait bool, args map[string]string) error {
 	// Check to see if an OCI registry is being used
 	// TODO: Add support for installing OCI registries
 	if strings.HasPrefix(url, "oci://") {
@@ -52,7 +52,7 @@ func Install(namespace string, url string, repoName string, chartName string, re
 	}
 
 	// Install charts
-	if err := InstallChart(releaseName, repoName, chartName, args); err != nil {
+	if err := InstallChart(releaseName, repoName, chartName, wait, args); err != nil {
 		return err
 	}
 
@@ -161,7 +161,7 @@ func RepoUpdate() error {
 }
 
 // InstallChart
-func InstallChart(name, repo, chart string, args map[string]string) error {
+func InstallChart(name, repo, chart string, wait bool, args map[string]string) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
@@ -203,8 +203,6 @@ func InstallChart(name, repo, chart string, args map[string]string) error {
 
 	if req := chartRequested.Metadata.Dependencies; req != nil {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
-		// As of Helm 2.4.0, this is treated as a stopping condition:
-		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
@@ -229,6 +227,9 @@ func InstallChart(name, repo, chart string, args map[string]string) error {
 	// set and have helm create the namespace
 	client.Namespace = settings.Namespace()
 	client.CreateNamespace = true
+	client.Wait = wait
+	// TODO: Make this configurable
+	client.Timeout = 180 * time.Second
 
 	_, err = client.Run(chartRequested, vals)
 	if err != nil {

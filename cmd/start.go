@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/christianh814/bekind/pkg/helm"
 	"github.com/christianh814/bekind/pkg/kind"
@@ -40,6 +39,7 @@ var HC []struct {
 	Release   string
 	Namespace string
 	Args      string
+	Wait      bool
 }
 
 // Set Default domain
@@ -145,18 +145,13 @@ on the configuration file that is passed`,
 					"set": fmt.Sprintf(v.Args),
 				}
 				log.Infof("Installing %s/%s from %s", v.Repo, v.Chart, v.Url)
-				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, HelmArgs); err != nil {
+
+				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, v.Wait, HelmArgs); err != nil {
 					log.Fatal(err)
 				}
 
 				// Special conditions apply for Argo CD
 				if v.Chart == "argo-cd" {
-
-					// Wait for Argo CD rollout to happen
-					log.Info("Waiting for Argo CD rollout")
-					if err = utils.WaitForDeployment(client, v.Namespace, "argocd-server", 600*time.Second); err != nil {
-						log.Fatal(err)
-					}
 
 					// Get argo password
 					argoSecret, err = client.CoreV1().Secrets("argocd").Get(context.TODO(), "argocd-initial-admin-secret", metav1.GetOptions{})
@@ -170,21 +165,13 @@ on the configuration file that is passed`,
 						log.Fatal(err)
 					}
 
+					// Save information for later use
 					argoUrl = fmt.Sprintf("https://%s", argoIngress.Spec.Rules[0].Host)
 					argoPass = string(argoSecret.Data["password"])
 
 				}
 
-				// Special conditions apply for Nginx Ingress
-				if v.Chart == "ingress-nginx" {
-					log.Info("Waiting for Ingress rollout")
-					if err = utils.WaitForDeployment(client, v.Namespace, "nginx-ingress-ingress-nginx-controller", 600*time.Second); err != nil {
-						log.Fatal(err)
-					}
-
-				}
 			}
-			//
 		}
 
 		// Load images into the cluster

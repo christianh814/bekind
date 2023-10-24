@@ -31,18 +31,21 @@ helmCharts:
     release: "nginx-ingress"
     namespace: "ingress-controller"
     args: 'controller.hostNetwork=true,controller.nodeSelector.nginx=ingresshost,controller.service.type=ClusterIP,controller.service.externalTrafficPolicy=,controller.extraArgs.enable-ssl-passthrough=,controller.tolerations[0].operator=Exists'
+    wait: true
   - url: "https://argoproj.github.io/argo-helm"
     repo: "argo"
     chart: "argo-rollouts"
     release: "argo-rollouts"
     namespace: "argo-rollouts"
     args: 'installCRDs=true,controller.image.pullPolicy=IfNotPresent'
+    wait: true
   - url: "https://argoproj.github.io/argo-helm"
     repo: "argo"
     chart: "argo-cd"
     release: "argocd"
     namespace: "argocd"
     args: 'server.ingress.enabled=true,server.ingress.hosts[0]=argocd.7f000001.nip.io,server.ingress.ingressClassName="nginx",server.ingress.https=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/force-ssl-redirect"=true'
+    wait: true
 kindConfig: |
   kind: Cluster
   apiVersion: kind.x-k8s.io/v1alpha4
