@@ -136,7 +136,6 @@ on the configuration file that is passed`,
 
 		// Install Helm Charts if any exist in the config file
 		if len(HC) != 0 {
-			log.Info("Installing HelmCharts from config file")
 			// Range over the helmCharts and try to install them
 			// 	TODO: Currently it's garbage in garbage out, if the user provides a bad chart it will fail
 			for _, v := range HC {
@@ -145,7 +144,7 @@ on the configuration file that is passed`,
 					// comma seperated values to set
 					"set": fmt.Sprintf(v.Args),
 				}
-				log.Infof("Installing %s/%s from %s", v.Repo, v.Chart, v.Url)
+				log.Infof("Installing Helm Chart %s/%s from %s", v.Repo, v.Chart, v.Url)
 
 				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, v.Version, v.Wait, HelmArgs); err != nil {
 					log.Fatal(err)
