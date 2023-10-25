@@ -60,6 +60,11 @@ func DeleteKindCluster(name string, cfg string) error {
 
 }
 
+// ListKindClusters lists KIND clusters
+func ListKindClusters() ([]string, error) {
+	return Provider.List()
+}
+
 // LoadDockerImage loads a docker image into the KIND cluster
 func LoadDockerImage(images []string, clustername string) error {
 	// Get the list of nodes in the cluster

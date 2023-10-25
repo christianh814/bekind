@@ -173,17 +173,8 @@ func InstallChart(name, repo, chart, version, url string, wait bool, args map[st
 
 	client.ReleaseName = name
 
-	// Do some song and dance for OCI registries
-	var cp string
-	var err error
-	if strings.HasPrefix(url, "oci://") {
-		rc, _ := registry.NewClient()
-		client.SetRegistryClient(rc)
-		cp, err = client.ChartPathOptions.LocateChart(url, settings)
-	} else {
-		cp, err = client.ChartPathOptions.LocateChart(fmt.Sprintf("%s/%s", repo, chart), settings)
-
-	}
+	// Get the chart path
+	cp, err := getChartPath(url, repo, chart, client, settings)
 	if err != nil {
 		return err
 	}
@@ -260,4 +251,19 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 
 func debug(format string, v ...interface{}) {
 	format = fmt.Sprintf("[debug] %s\n", format)
+}
+
+// getChartPath returns the path to the chart taking OCI into account
+func getChartPath(url, repo, chart string, client *action.Install, settings *cli.EnvSettings) (string, error) {
+	if strings.HasPrefix(url, "oci://") {
+		rc, err := registry.NewClient()
+		if err != nil {
+			return "", err
+		}
+		client.SetRegistryClient(rc)
+		return client.ChartPathOptions.LocateChart(url, settings)
+	} else {
+		return client.ChartPathOptions.LocateChart(fmt.Sprintf("%s/%s", repo, chart), settings)
+	}
+
 }
