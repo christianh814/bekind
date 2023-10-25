@@ -47,6 +47,13 @@ helmCharts:
     version: "0.0.3"
     args: 'build.enabled=false,deploy.route.enabled=false,image.name=quay.io/ablock/gitops-helm-quarkus'
     wait: true
+  - url: "oci://ghcr.io/akuity/kargo-charts/kargo"
+    repo: "kargo"
+    chart: "kargo"
+    release: "kargo"
+    namespace: "kargo"
+    args: 'api.adminAccount.password=admin,controller.logLevel=DEBUG,api.adminAccount.tokenTTL=24h,api.adminAccount.tokenSigningKey=secret'
+    wait: true
 kindConfig: |
   kind: Cluster
   apiVersion: kind.x-k8s.io/v1alpha4
@@ -75,9 +82,9 @@ loadDockerImages:
 
 The following are valid configurations for the `helmCharts` section:
 
-* `url`: The URL of the Helm repo (*REQUIRED*)
-* `repo`: What to name the repo, interally (*REQUIRED*). It's the `<reponame>` from `helm repo add <reponame> <url>`.
-* `chart`: What chart to install from the Helm repo (*REQUIRED*).
+* `url`: The URL of the Helm repo (*REQUIRED*). Can be OCI repo with `oci://`
+* `repo`: What to name the repo, interally (*REQUIRED*). It's the `<reponame>` from `helm repo add <reponame> <url>`. (ignored when using OCI)
+* `chart`: What chart to install from the Helm repo (*REQUIRED*). (Ignored when using OCI)
 * `release`: What to call the release when it's installed (*REQUIRED*).
 * `namespace`: The namespace to install the release to, it'll create the namespace if it's not already there (*REQUIRED*).
 * `version`: The version of the Helm chart to install (*Optional*)
