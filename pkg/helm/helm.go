@@ -23,29 +23,36 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/strvals"
 )
 
 var settings *cli.EnvSettings
 
-func Install(namespace string, url string, repoName string, chartName string, releaseName string, args map[string]string) error {
+func Install(namespace, url, repoName, chartName, releaseName, version string, wait bool, args map[string]string) error {
+
+	// Set the namespace
 	os.Setenv("HELM_NAMESPACE", namespace)
 
 	settings = cli.New()
 
-	// Add helm repo
-	if err := RepoAdd(repoName, url); err != nil {
-		return err
-	}
+	// No need to add/update if using OCI
+	if !strings.HasPrefix(url, "oci://") {
 
-	// Update charts from the helm repo
-	if err := RepoUpdate(); err != nil {
-		return err
+		// Add helm repo
+		if err := RepoAdd(repoName, url); err != nil {
+			return err
+		}
+
+		// Update charts from the helm repo
+		if err := RepoUpdate(); err != nil {
+			return err
+		}
 	}
 
 	// Install charts
-	if err := InstallChart(releaseName, repoName, chartName, args); err != nil {
+	if err := InstallChart(releaseName, repoName, chartName, version, url, wait, args); err != nil {
 		return err
 	}
 
@@ -148,7 +155,7 @@ func RepoUpdate() error {
 }
 
 // InstallChart
-func InstallChart(name, repo, chart string, args map[string]string) error {
+func InstallChart(name, repo, chart, version, url string, wait bool, args map[string]string) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
@@ -158,9 +165,25 @@ func InstallChart(name, repo, chart string, args map[string]string) error {
 	if client.Version == "" && client.Devel {
 		client.Version = ">0.0.0-0"
 	}
-	//name, chart, err := client.NameAndChart(args)
+
+	// Set version if provided
+	if version != "" {
+		client.Version = version
+	}
+
 	client.ReleaseName = name
-	cp, err := client.ChartPathOptions.LocateChart(fmt.Sprintf("%s/%s", repo, chart), settings)
+
+	// Do some song and dance for OCI registries
+	var cp string
+	var err error
+	if strings.HasPrefix(url, "oci://") {
+		rc, _ := registry.NewClient()
+		client.SetRegistryClient(rc)
+		cp, err = client.ChartPathOptions.LocateChart(url, settings)
+	} else {
+		cp, err = client.ChartPathOptions.LocateChart(fmt.Sprintf("%s/%s", repo, chart), settings)
+
+	}
 	if err != nil {
 		return err
 	}
@@ -190,8 +213,6 @@ func InstallChart(name, repo, chart string, args map[string]string) error {
 
 	if req := chartRequested.Metadata.Dependencies; req != nil {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
-		// As of Helm 2.4.0, this is treated as a stopping condition:
-		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
@@ -202,6 +223,7 @@ func InstallChart(name, repo, chart string, args map[string]string) error {
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
+					RegistryClient:   client.GetRegistryClient(),
 				}
 				if err := man.Update(); err != nil {
 					return err
@@ -215,6 +237,9 @@ func InstallChart(name, repo, chart string, args map[string]string) error {
 	// set and have helm create the namespace
 	client.Namespace = settings.Namespace()
 	client.CreateNamespace = true
+	client.Wait = wait
+	// TODO: Make this configurable
+	client.Timeout = 180 * time.Second
 
 	_, err = client.Run(chartRequested, vals)
 	if err != nil {
