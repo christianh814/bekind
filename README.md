@@ -6,8 +6,8 @@ Bekind will:
 
 * Installs a KIND cluster based on the supplied config
 * KIND cluster can be modified to deploy a specific K8S version
-* Installs any Supplied Helm Charts (OCI registries not supported currently...PRs welcome!)
-* Loads images into the KIND cluster (image MUST exist locally currently...again...PRs are welcome!)
+* Installs any Supplied Helm Charts
+* Loads images into the KIND cluster (image MUST exist locally currently...PRs are welcome!)
 
 # Config
 
