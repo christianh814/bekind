@@ -9,6 +9,27 @@ Bekind will:
 * Installs any Supplied Helm Charts
 * Loads images into the KIND cluster (image MUST exist locally currently...PRs are welcome!)
 
+# Installation
+
+Prerequisites:
+
+* go version `1.20` or newer
+* Docker (Podman is still [considered experemental](https://github.com/kubernetes-sigs/kind/pull/1302) by KIND)
+
+
+Install with:
+
+```shell
+go install github.com/christianh814/bekind@latest
+```
+
+Then move into your `$PATH` (example showing `/usr/local/bin`)
+
+```shell
+sudo mv $GOBIN/bekind /usr/local/bin/bekind
+sudo chmod +x /usr/local/bin/bekind
+```
+
 # Config
 
 You can customize the setup by providing a Specific Config (under `~/.bekind/config.yaml` or by providing `--config` to a YAML file)
