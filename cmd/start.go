@@ -122,6 +122,14 @@ on the configuration file that is passed`,
 			}
 		}
 
+		// Load images into the cluster
+		if len(dockerImages) != 0 {
+			log.Info("Loading Images in KIND cluster")
+			if err := kind.LoadDockerImage(dockerImages, clusterName); err != nil {
+				log.Fatal(err)
+			}
+		}
+
 		// Grab HelmCharts provided in the config file
 		err = viper.UnmarshalKey("helmCharts", &HC)
 		if err != nil {
@@ -171,14 +179,6 @@ on the configuration file that is passed`,
 
 				}
 
-			}
-		}
-
-		// Load images into the cluster
-		if len(dockerImages) != 0 {
-			log.Info("Loading Images in KIND cluster")
-			if err := kind.LoadDockerImage(dockerImages, clusterName); err != nil {
-				log.Fatal(err)
 			}
 		}
 
