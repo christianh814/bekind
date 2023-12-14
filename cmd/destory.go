@@ -16,9 +16,12 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+
 	"github.com/christianh814/bekind/pkg/kind"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // destroyCmd represents the destory command
@@ -35,7 +38,24 @@ if one isn't named.`,
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Info("Destroying KIND cluster")
+
+		// Set the kindConfig as the config file for Viper
+		kindConfig := viper.GetString("kindConfig")
+		if len(kindConfig) == 0 {
+			log.Fatal("Could not find kindConfig")
+		}
+		viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig)))
+
+		// Check to see if the cluster name is set in the config file
+		if viper.GetString("name") != "" {
+			clusterName = viper.GetString("name")
+		}
+
+		// Set config file back to default for Viper
+		viper.SetConfigFile(cfgFile)
+		viper.ReadInConfig()
+
+		log.Info("Destroying KIND cluster: ", clusterName)
 		if err := kind.DeleteKindCluster(clusterName, ""); err != nil {
 			log.Fatal(err)
 		}

@@ -47,7 +47,7 @@ var HC []struct {
 var Domain string = "127.0.0.1.nip.io"
 
 // Set the default Kind Image version
-var KindImageVersion string = "kindest/node:v1.28.0"
+var KindImageVersion string = "kindest/node:v1.29.0"
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
@@ -95,6 +95,11 @@ on the configuration file that is passed`,
 		var usesWorkers bool = false
 		if len(viper.GetStringSlice("nodes")) > 1 {
 			usesWorkers = true
+		}
+
+		// Check to see if the cluster name is set in the config file
+		if viper.GetString("name") != "" {
+			clusterName = viper.GetString("name")
 		}
 
 		// Set config file back to default for Viper
