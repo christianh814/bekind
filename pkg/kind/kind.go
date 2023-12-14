@@ -66,7 +66,14 @@ func ListKindClusters() ([]string, error) {
 }
 
 // LoadDockerImage loads a docker image into the KIND cluster
-func LoadDockerImage(images []string, clustername string) error {
+func LoadDockerImage(images []string, clustername string, pull bool) error {
+	// If we are pulling the images, do that first
+	if pull {
+		err := pullImages(images)
+		if err != nil {
+			return err
+		}
+	}
 	// Get the list of nodes in the cluster
 	nodes, err := Provider.ListNodes(clustername)
 	if err != nil {
@@ -108,7 +115,7 @@ func save(images []string, dest string) error {
 	return exec.Command("docker", commandArgs...).Run()
 }
 
-// loads an image tarball onto a node
+// loadImage loads an image tarball onto a node
 func loadImage(imageTarName string, node nodes.Node) error {
 	f, err := os.Open(imageTarName)
 	if err != nil {
@@ -116,4 +123,15 @@ func loadImage(imageTarName string, node nodes.Node) error {
 	}
 	defer f.Close()
 	return nodeutils.LoadImageArchive(node, f)
+}
+
+// pullImages pulls images locally so that they can be loaded into the cluster
+func pullImages(images []string) error {
+	for _, image := range images {
+		err := exec.Command("docker", "pull", image).Run()
+		if err != nil {
+			return errors.New("failed to pull image: " + image)
+		}
+	}
+	return nil
 }

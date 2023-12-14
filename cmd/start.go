@@ -64,6 +64,12 @@ on the configuration file that is passed`,
 			log.Fatal(err)
 		}
 
+		// check to see if the user wants to pull images before loading them into the cluster
+		pullImages, err := cmd.Flags().GetBool("pull")
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		// Get "domain" from the config file if it exists using viper
 		// Leaving this here although not using "domain" anymore, it might
 		// be useful in the future.
@@ -130,7 +136,7 @@ on the configuration file that is passed`,
 		// Load images into the cluster
 		if len(dockerImages) != 0 {
 			log.Info("Loading Images in KIND cluster")
-			if err := kind.LoadDockerImage(dockerImages, clusterName); err != nil {
+			if err := kind.LoadDockerImage(dockerImages, clusterName, pullImages); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -199,4 +205,6 @@ on the configuration file that is passed`,
 
 func init() {
 	rootCmd.AddCommand(startCmd)
+
+	startCmd.PersistentFlags().BoolP("pull", "p", true, "Pull images in the config file before loading them into the cluster")
 }
