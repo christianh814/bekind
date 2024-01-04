@@ -1,13 +1,13 @@
 # BeKind
 
-Installs a K8S cluster using KIND, and does a number of post deployment steps.
+Installs a K8S cluster using [KIND](https://github.com/kubernetes-sigs/kind), and does a number of post deployment steps.
 
 Bekind will:
 
-* Installs a KIND cluster based on the supplied config
+* Install a KIND cluster based on the supplied config
 * KIND cluster can be modified to deploy a specific K8S version
 * Installs any Supplied Helm Charts
-* Loads images into the KIND cluster (image MUST exist locally currently...PRs are welcome!)
+* Loads images into the KIND cluster
 
 # Installation
 
@@ -36,11 +36,11 @@ You can customize the setup by providing a Specific Config (under `~/.bekind/con
 
 For example:
 
-* `domain`: Domain to use for any ingresses this tool will autocreate, assuming wildcard DNS (currently unused)
+* `domain`: Domain to use for any ingresses this tool will autocreate, assuming wildcard DNS (currently unused/ignored)
 * `kindImageVersion`: The KIND Node image to use (You can find a list [on dockerhub](https://hub.docker.com/r/kindest/node/tags)). You can also supply your own public image or a local image.
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out".
 * `helmCharts`: Different Helm Charts to install on startup. "garbage in/garbage out". See [Helm Chart Config](#helm-chart-config) for more info.
-* `loadDockerImages`: List of images to load onto the nodes (**NOTE** images must exist locally). Only `docker` is supported (see [KIND upstream issue](https://github.com/kubernetes-sigs/kind/pull/3109))
+* `loadDockerImages`: List of images to load onto the nodes (**NOTE** images must exist locally, so a "pull" is performed). Only `docker` is supported (see [KIND upstream issue](https://github.com/kubernetes-sigs/kind/pull/3109))
 
 ```yaml
 domain: "7f000001.nip.io"
@@ -51,14 +51,38 @@ helmCharts:
     chart: "ingress-nginx"
     release: "nginx-ingress"
     namespace: "ingress-controller"
-    args: 'controller.hostNetwork=true,controller.nodeSelector.nginx=ingresshost,controller.service.type=ClusterIP,controller.service.externalTrafficPolicy=,controller.extraArgs.enable-ssl-passthrough=,controller.tolerations[0].operator=Exists'
+    args:
+      - name: 'controller.hostNetwork'
+        value: "true"
+      - name: 'controller.nodeSelector.nginx'
+        value: "ingresshost"
+      - name: 'controller.service.type'
+        value: "ClusterIP"
+      - name: 'controller.tolerations[0].operator'
+        value: "Exists"
+      - name: 'controller.service.externalTrafficPolicy'
+        value: ""
+      - name: 'controller.extraArgs.enable-ssl-passthrough'
+        value: ""
     wait: true
   - url: "https://argoproj.github.io/argo-helm"
     repo: "argo"
     chart: "argo-cd"
     release: "argocd"
     namespace: "argocd"
-    args: 'server.ingress.enabled=true,server.ingress.hosts[0]=argocd.7f000001.nip.io,server.ingress.ingressClassName="nginx",server.ingress.https=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"=true,server.ingress.annotations."nginx\.ingress\.kubernetes\.io/force-ssl-redirect"=true'
+    args:
+      - name: 'server.ingress.enabled'
+        value: "true"
+      - name: 'server.ingress.hosts[0]'
+        value: "argocd.7f000001.nip.io"
+      - name: 'server.ingress.ingressClassName'
+        value: "nginx"
+      - name: 'server.ingress.https'
+        value: "true"
+      - name: 'server.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"'
+        value: "true"
+      - name: 'server.ingress.annotations."nginx\.ingress\.kubernetes\.io/force-ssl-redirect"'
+        value: "true"
     wait: true
   - url: "https://redhat-developer.github.io/redhat-helm-charts"
     repo: "redhat-helm-charts"
@@ -66,14 +90,28 @@ helmCharts:
     release: "myapp"
     namespace: "demo"
     version: "0.0.3"
-    args: 'build.enabled=false,deploy.route.enabled=false,image.name=quay.io/ablock/gitops-helm-quarkus'
+    args:
+      - name: 'build.enabled'
+        value: "false"
+      - name: 'deploy.route.enabled'
+        value: "false"
+      - name: 'image.name' 
+        value: "quay.io/ablock/gitops-helm-quarkus"
     wait: true
   - url: "oci://ghcr.io/akuity/kargo-charts/kargo"
     repo: "kargo"
     chart: "kargo"
     release: "kargo"
     namespace: "kargo"
-    args: 'api.adminAccount.password=admin,controller.logLevel=DEBUG,api.adminAccount.tokenTTL=24h,api.adminAccount.tokenSigningKey=secret'
+    args: 
+      - name: 'api.adminAccount.password'
+        value: "admin"
+      - name: 'controller.logLevel'
+        value: "DEBUG"
+      - name: 'api.adminAccount.tokenTTL'
+        value: "24h"
+      - name: 'api.adminAccount.tokenSigningKey'
+        value: "secret"
     wait: true
 kindConfig: |
   kind: Cluster
@@ -109,5 +147,5 @@ The following are valid configurations for the `helmCharts` section:
 * `release`: What to call the release when it's installed (*REQUIRED*).
 * `namespace`: The namespace to install the release to, it'll create the namespace if it's not already there (*REQUIRED*).
 * `version`: The version of the Helm chart to install (*Optional*)
-* `args`: The parameter of the `--set` command to change the values in a comma separated format. (*REQUIRED*)
+* `args`: The parameter of the `--set` command to change the values in a comma separated format. This is a list of key value pairs using `name` for the key and `value` for the value. (*Optional*)
 * `wait`: Wait for the release to be installed before returning (*Optional*); default is `false`.

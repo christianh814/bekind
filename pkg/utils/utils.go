@@ -226,3 +226,28 @@ func LabelWorkers(c kubernetes.Interface) error {
 	// If we made it this far, then we're good
 	return nil
 }
+
+// ConvertHelmValsToMap converts a slice of strings to a map of strings
+func ConvertHelmValsToMap(a []struct { Name  string;Value string }) map[string]string {
+	HelmArgs := map[string]string{
+		"set": "",
+	}
+
+	if len(a) == 0 {
+		return HelmArgs
+	} else {
+
+		for i, v := range a {
+			if len(a) == i+1 {
+				HelmArgs["set"] = HelmArgs["set"] + v.Name + "=" + v.Value
+			} else {
+				HelmArgs["set"] = HelmArgs["set"] + v.Name + "=" + v.Value + ","
+
+			}
+		}
+
+	}
+
+	return HelmArgs
+
+}
