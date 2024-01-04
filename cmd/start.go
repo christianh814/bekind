@@ -31,6 +31,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// HelmValues is the values provied in the configfile
+type HelmValues struct {
+	Name  string
+	Value string
+}
+
 // HC is the extra helmcharts to install, if provided
 var HC []struct {
 	Url       string
@@ -38,9 +44,12 @@ var HC []struct {
 	Chart     string
 	Release   string
 	Namespace string
-	Args      string
-	Wait      bool
-	Version   string
+	Args      []struct {
+		Name  string
+		Value string
+	}
+	Wait    bool
+	Version string
 }
 
 // Set Default domain
@@ -95,7 +104,9 @@ on the configuration file that is passed`,
 		if len(kindConfig) == 0 {
 			log.Fatal("Could not find kindConfig")
 		}
-		viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig)))
+		if err := viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig))); err != nil {
+			log.Fatal(err)
+		}
 
 		// Check to see if workers are being used. This is used to label the workers as such. This is based on inspecting the kindConfig
 		var usesWorkers bool = false
@@ -159,10 +170,7 @@ on the configuration file that is passed`,
 			// 	TODO: Currently it's garbage in garbage out, if the user provides a bad chart it will fail
 			for _, v := range HC {
 				// Install HelmChart
-				HelmArgs := map[string]string{
-					// comma seperated values to set
-					"set": fmt.Sprintf(v.Args),
-				}
+				HelmArgs := utils.ConvertHelmValsToMap(v.Args)
 				log.Infof("Installing Helm Chart %s/%s from %s", v.Repo, v.Chart, v.Url)
 
 				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, v.Version, v.Wait, HelmArgs); err != nil {
