@@ -60,6 +60,26 @@ func DeleteKindCluster(name string, cfg string) error {
 
 }
 
+// DeleteAllKindClusters deletes all KIND clusters
+func DeleteAllKindClusters(cfg string) error {
+	// List all clusters
+	clusters, err := ListKindClusters()
+	if err != nil {
+		return err
+	}
+
+	// Loop through all clusters and delete them
+	for _, cluster := range clusters {
+		err := DeleteKindCluster(cluster, cfg)
+		if err != nil {
+			return err
+		}
+	}
+
+	// If we are here we should be okay
+	return nil
+}
+
 // ListKindClusters lists KIND clusters
 func ListKindClusters() ([]string, error) {
 	return Provider.List()
