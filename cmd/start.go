@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -183,7 +184,13 @@ on the configuration file that is passed`,
 					// Get argo password
 					argoSecret, err = client.CoreV1().Secrets("argocd").Get(context.TODO(), "argocd-initial-admin-secret", metav1.GetOptions{})
 					if err != nil {
-						log.Fatal(err)
+						if k8serrors.IsNotFound(err) {
+							argoSecret.Data = map[string][]byte{
+								"password": []byte("~* provided in helm chart *~"),
+							}
+						} else {
+							log.Fatal(err)
+						}
 					}
 
 					// Get argo ingress
@@ -203,7 +210,7 @@ on the configuration file that is passed`,
 
 		// Display Argo CD URL and password if it exists
 		if argoUrl != "" {
-			log.Infof("Argo CD is available at %s username: admin password %s", argoUrl, argoPass)
+			log.Infof("Argo CD is available at %s username: admin password: %s", argoUrl, argoPass)
 		} else {
 			log.Infof("KIND cluster %s is ready", clusterName)
 
