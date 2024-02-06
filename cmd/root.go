@@ -29,7 +29,7 @@ var KubeConfig string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "bekind",
-	Version: "v0.2.2",
+	Version: "v0.2.3",
 	Short:   "Installs an opinionated KIND cluster",
 	Long: `This command installs a KIND cluster.
 The KIND cluster is then configured based on what configuration file is passed.`,

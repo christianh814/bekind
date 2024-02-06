@@ -44,7 +44,7 @@ For example:
 
 ```yaml
 domain: "7f000001.nip.io"
-kindImageVersion: "kindest/node:v1.28.0"
+kindImageVersion: "kindest/node:v1.29.1"
 helmCharts:
   - url: "https://kubernetes.github.io/ingress-nginx"
     repo: "ingress-nginx"

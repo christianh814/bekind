@@ -57,7 +57,7 @@ var HC []struct {
 var Domain string = "127.0.0.1.nip.io"
 
 // Set the default Kind Image version
-var KindImageVersion string = "kindest/node:v1.29.0"
+var KindImageVersion string = "kindest/node:v1.29.1"
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
