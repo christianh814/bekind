@@ -100,6 +100,10 @@ on the configuration file that is passed`,
 		// Get images to load from the config file. NOTE: Images must exist on the host FIRST.
 		dockerImages := viper.GetStringSlice("loadDockerImages")
 
+		// Get post install manifests. NOTE: these need to be in YAML format currently
+		// TODO: support for JSON formatted K8S Manifests
+		postInstallManifests := viper.GetStringSlice("postInstallManifests")
+
 		// Set the kindConfig as the config file for Viper
 		kindConfig := viper.GetString("kindConfig")
 		if len(kindConfig) == 0 {
@@ -205,6 +209,15 @@ on the configuration file that is passed`,
 
 				}
 
+			}
+		}
+
+		// Load images into the cluster
+		if len(postInstallManifests) != 0 {
+			log.Info("Post Deployment Manifests")
+			rc, _ := utils.GetRestConfig("")
+			if err := utils.PostInstallManifests(postInstallManifests, context.TODO(), rc); err != nil {
+				log.Warn("Issue with Post Install Manifests: ", err)
 			}
 		}
 

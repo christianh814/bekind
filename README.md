@@ -41,6 +41,7 @@ For example:
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out".
 * `helmCharts`: Different Helm Charts to install on startup. "garbage in/garbage out". See [Helm Chart Config](#helm-chart-config) for more info.
 * `loadDockerImages`: List of images to load onto the nodes (**NOTE** images must exist locally, so a "pull" is performed). Only `docker` is supported (see [KIND upstream issue](https://github.com/kubernetes-sigs/kind/pull/3109))
+* `postInstallManifests`: List of YAML files to apply to the KIND cluster after setup. This is the last step to run in the process. There is no checks done and any errors are from the K8S API. Currently only YAML files are supported. It's "garbage in/garbage out".
 
 ```yaml
 domain: "7f000001.nip.io"
@@ -59,8 +60,7 @@ helmCharts:
       - name: 'controller.service.type'
         value: "ClusterIP"
       - name: 'controller.tolerations[0].operator'
-        value: "Exists"
-      - name: 'controller.service.externalTrafficPolicy'
+        value: "Exists" - name: 'controller.service.externalTrafficPolicy'
         value: ""
       - name: 'controller.extraArgs.enable-ssl-passthrough'
         value: ""
@@ -136,6 +136,9 @@ kindConfig: |
       listenAddress: 0.0.0.0
 loadDockerImages:
   - gcr.io/kuar-demo/kuard-amd64:blue
+postInstallManifests:
+  - 'file:///path/to/local/k8s/file.yaml'
+  - 'https://raw.githubusercontent.com/christianh814/gitops-examples/main/gobg/gobg.yaml'
 ```
 # Helm Chart Config
 
