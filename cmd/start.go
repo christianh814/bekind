@@ -212,7 +212,7 @@ on the configuration file that is passed`,
 			}
 		}
 
-		// Load images into the cluster
+		// Load manifests into the cluster (if any)
 		if len(postInstallManifests) != 0 {
 			log.Info("Post Deployment Manifests")
 			rc, _ := utils.GetRestConfig("")
