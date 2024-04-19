@@ -299,7 +299,7 @@ func getPostInstallBytes(m string) ([]byte, error) {
 
 	// Check to see if local file or from web
 	switch {
-	case strings.HasPrefix(m, "http"):
+	case strings.HasPrefix(m, "http://"), strings.HasPrefix(m, "https://"):
 		data, err := DownloadFileString(m)
 		if err != nil {
 			return nil, err
@@ -323,6 +323,8 @@ func getPostInstallBytes(m string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+	default:
+		return nil, errors.New("only http://, https://, and file:// are supported")
 	}
 
 	// Check to see if we even have data
