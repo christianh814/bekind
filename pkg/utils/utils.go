@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -99,7 +100,7 @@ func DoSSA(ctx context.Context, cfg *rest.Config, yaml []byte) error {
 	//     types.ApplyPatchType indicates service side apply
 	//     FieldManager specifies the field owner ID.
 	_, err = dr.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, v1.PatchOptions{
-		FieldManager: "fauxpenshift",
+		FieldManager: "bekind",
 	})
 
 	return err
@@ -143,17 +144,22 @@ func WaitForDeployment(c kubernetes.Interface, namespace string, deployment stri
 
 // NewClient returns a kubernetes.Interface
 func NewClient(kubeConfigPath string) (kubernetes.Interface, error) {
+	kubeConfig, err := GetRestConfig(kubeConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	return kubernetes.NewForConfig(kubeConfig)
+}
+
+// GetRestConfig returns a *rest.Config
+func GetRestConfig(kubeConfigPath string) (*rest.Config, error) {
 	if kubeConfigPath == "" {
 		kubeConfigPath = os.Getenv("KUBECONFIG")
 	}
 	if kubeConfigPath == "" {
 		kubeConfigPath = clientcmd.RecommendedHomeFile // use default path(.kube/config)
 	}
-	kubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	return kubernetes.NewForConfig(kubeConfig)
+	return clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 }
 
 // DownloadFileString will load the contents of a url to a string and return it
@@ -228,7 +234,10 @@ func LabelWorkers(c kubernetes.Interface) error {
 }
 
 // ConvertHelmValsToMap converts a slice of strings to a map of strings
-func ConvertHelmValsToMap(a []struct { Name  string;Value string }) map[string]string {
+func ConvertHelmValsToMap(a []struct {
+	Name  string
+	Value string
+}) map[string]string {
 	HelmArgs := map[string]string{
 		"set": "",
 	}
@@ -250,4 +259,79 @@ func ConvertHelmValsToMap(a []struct { Name  string;Value string }) map[string]s
 
 	return HelmArgs
 
+}
+
+// PostInstallManifests will install the manifests after cluster has been created and setup. It is currently best effort/garbage in garbage out
+func PostInstallManifests(manifests []string, ctx context.Context, cfg *rest.Config) error {
+	// Loop through the manifests and apply them
+	for _, m := range manifests {
+		// Get the bytes from the manifest
+		data, err := getPostInstallBytes(m)
+		if err != nil {
+			return err
+		}
+
+		// Split the YAML into a slice of bytes
+		yamls, err := SplitYAML(data)
+		if err != nil {
+			return err
+		}
+
+		// Loop through the yamls and apply them
+		for _, y := range yamls {
+			// Apply the YAML
+			err := DoSSA(ctx, cfg, y)
+			if err != nil {
+				return err
+			}
+			// Add 3 second jitter
+			//time.Sleep(3 * time.Second)
+		}
+
+	}
+	// If we are here, then we should be okay
+	return nil
+}
+
+func getPostInstallBytes(m string) ([]byte, error) {
+	// Set up []byte to hold the data
+	var d []byte
+
+	// Check to see if local file or from web
+	switch {
+	case strings.HasPrefix(m, "http://"), strings.HasPrefix(m, "https://"):
+		data, err := DownloadFileString(m)
+		if err != nil {
+			return nil, err
+		}
+		d = []byte(data)
+	case strings.HasPrefix(m, "file://"):
+		// for a localfile, use the http package to get the file
+		t := &http.Transport{}
+		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
+		c := &http.Client{Transport: t}
+		res, err := c.Get(m)
+
+		if err != nil {
+			return nil, err
+		}
+
+		defer res.Body.Close()
+
+		d, err = io.ReadAll(res.Body)
+
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("only http://, https://, and file:// are supported")
+	}
+
+	// Check to see if we even have data
+	if len(d) == 0 {
+		return nil, errors.New("no data found")
+	}
+
+	// If we are here, then we should be okay
+	return d, nil
 }
