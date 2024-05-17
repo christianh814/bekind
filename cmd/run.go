@@ -52,9 +52,6 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-
-	// needed for the startCmd command
-	runCmd.PersistentFlags().BoolP("pull", "p", true, "Pull images in the config file before loading them into the cluster")
 }
 
 // profileValidArgs returns a list of profiles for tab completion

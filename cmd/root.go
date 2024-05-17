@@ -29,7 +29,7 @@ var KubeConfig string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "bekind",
-	Version: "v0.2.6",
+	Version: "v0.3.0",
 	Short:   "Installs an opinionated KIND cluster",
 	Long: `This command installs a KIND cluster.
 The KIND cluster is then configured based on what configuration file is passed.`,
@@ -79,7 +79,7 @@ func initConfig() {
 	// If a config file is found, read it in. Only displaying an error if there was a problem reading the file.
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+			fmt.Fprintln(os.Stderr, "Error using config file:", viper.ConfigFileUsed())
 		}
 	}
 

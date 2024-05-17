@@ -40,7 +40,7 @@ For example:
 * `kindImageVersion`: The KIND Node image to use (You can find a list [on dockerhub](https://hub.docker.com/r/kindest/node/tags)). You can also supply your own public image or a local image.
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out".
 * `helmCharts`: Different Helm Charts to install on startup. "garbage in/garbage out". See [Helm Chart Config](#helm-chart-config) for more info.
-* `loadDockerImages`: List of images to load onto the nodes (**NOTE** images must exist locally, so a "pull" is performed). Only `docker` is supported (see [KIND upstream issue](https://github.com/kubernetes-sigs/kind/pull/3109))
+* `loadDockerImages`: List of images to load onto the nodes. See the [Loading Docker Images](#loading-docker-images) section below for more info.
 * `postInstallManifests`: List of YAML files to apply to the KIND cluster after setup. This is the last step to run in the process. There is no checks done and any errors are from the K8S API. Currently only YAML files are supported. It's "garbage in/garbage out".
 
 ```yaml
@@ -135,11 +135,14 @@ kindConfig: |
       hostPort: 443
       listenAddress: 0.0.0.0
 loadDockerImages:
-  - gcr.io/kuar-demo/kuard-amd64:blue
+  pullImages: true
+  images:
+    - gcr.io/kuar-demo/kuard-amd64:blue
 postInstallManifests:
   - 'file:///path/to/local/k8s/file.yaml'
   - 'https://raw.githubusercontent.com/christianh814/gitops-examples/main/gobg/gobg.yaml'
 ```
+
 # Helm Chart Config
 
 The following are valid configurations for the `helmCharts` section:
@@ -152,3 +155,12 @@ The following are valid configurations for the `helmCharts` section:
 * `version`: The version of the Helm chart to install (*Optional*)
 * `args`: The parameter of the `--set` command to change the values in a comma separated format. This is a list of key value pairs using `name` for the key and `value` for the value. (*Optional*)
 * `wait`: Wait for the release to be installed before returning (*Optional*); default is `false`.
+
+# Loading Docker Images
+
+The following are valid configurations for the `loadDockerImages` section:
+
+> :rotating_light: **NOTE** Only `docker` is supported see [KIND upstream issue](https://github.com/kubernetes-sigs/kind/pull/3109)
+
+* `pullImages`: To perform a pull of the image before lodaing (opional and defaults to `true` if not supplied). This is a "global" setting (you're either pulling them all or none)
+* `images`: List of images to do the pull.

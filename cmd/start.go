@@ -32,6 +32,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// pullImages set to true by default
+var pullImages bool = true
+
 // HelmValues is the values provied in the configfile
 type HelmValues struct {
 	Name  string
@@ -75,9 +78,8 @@ on the configuration file that is passed`,
 		}
 
 		// check to see if the user wants to pull images before loading them into the cluster
-		pullImages, err := cmd.Flags().GetBool("pull")
-		if err != nil {
-			log.Fatal(err)
+		if viper.IsSet("loadDockerImages.pullImages") {
+			pullImages = viper.GetBool("loadDockerImages.pullImages")
 		}
 
 		// Get "domain" from the config file if it exists using viper
@@ -98,7 +100,7 @@ on the configuration file that is passed`,
 		}
 
 		// Get images to load from the config file. NOTE: Images must exist on the host FIRST.
-		dockerImages := viper.GetStringSlice("loadDockerImages")
+		dockerImages := viper.GetStringSlice("loadDockerImages.images")
 
 		// Get post install manifests. NOTE: these need to be in YAML format currently
 		// TODO: support for JSON formatted K8S Manifests
@@ -233,6 +235,4 @@ on the configuration file that is passed`,
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-
-	startCmd.PersistentFlags().BoolP("pull", "p", true, "Pull images in the config file before loading them into the cluster")
 }
