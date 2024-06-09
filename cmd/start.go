@@ -60,7 +60,7 @@ var HC []struct {
 var Domain string = "127.0.0.1.nip.io"
 
 // Set the default Kind Image version
-var KindImageVersion string = "kindest/node:v1.30.0"
+var KindImageVersion string
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
@@ -95,7 +95,7 @@ on the configuration file that is passed`,
 			KindImageVersion = viper.GetString("kindImageVersion")
 			log.Warn("Using custom KIND node image " + KindImageVersion)
 		} else {
-			log.Info("Using KIND node image " + KindImageVersion)
+			log.Info("Using default KIND node image")
 
 		}
 

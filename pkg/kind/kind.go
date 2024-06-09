@@ -8,6 +8,7 @@ import (
 
 	"github.com/christianh814/bekind/pkg/utils"
 	"github.com/spf13/viper"
+	kindConfig "sigs.k8s.io/kind/pkg/apis/config/defaults"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cluster/nodes"
 	"sigs.k8s.io/kind/pkg/cluster/nodeutils"
@@ -30,6 +31,11 @@ func CreateKindCluster(name string, kindImage string) error {
 	installConfig := viper.GetString("kindConfig")
 	if installConfig == "" {
 		return errors.New("no valid config found")
+	}
+
+	// If the image is not given, use the default image
+	if kindImage == "" {
+		kindImage = kindConfig.Image
 	}
 
 	// Create a KIND instance and write out the kubeconfig in the specified location
