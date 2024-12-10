@@ -45,6 +45,12 @@ var runCmd = &cobra.Command{
 			}
 		}
 
+		// If the view flag is set, show the config
+		if view, _ := cmd.Flags().GetBool("view"); view {
+			showconfigCmd.Run(cmd, []string{})
+			os.Exit(0)
+		}
+
 		// Run the profile
 		startCmd.Run(cmd, []string{})
 	},
@@ -52,6 +58,9 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+
+	// Add a view flag that takes a string argument
+	runCmd.Flags().BoolP("view", "v", false, "View the profile configuration")
 }
 
 // profileValidArgs returns a list of profiles for tab completion
