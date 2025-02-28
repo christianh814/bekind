@@ -331,6 +331,29 @@ func SaveBeKindConfig(cfg *rest.Config, ctx context.Context, ns string, name str
 	return nil
 }
 
+func GetBeKindConfig(cfg *rest.Config, ctx context.Context, ns string, name string) ([]byte, error) {
+	// Create Kubernetes cilent
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the secret
+	secret, err := client.CoreV1().Secrets(ns).Get(ctx, name, v1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the data
+	data, ok := secret.Data["config.yaml"]
+	if !ok {
+		return nil, errors.New("config.yaml not found in secret")
+	}
+
+	// If we are here, then we should be okay
+	return data, nil
+}
+
 func getPostInstallBytes(m string) ([]byte, error) {
 	// Set up []byte to hold the data
 	var d []byte
