@@ -12,7 +12,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	goyaml "gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -289,6 +291,42 @@ func PostInstallManifests(manifests []string, ctx context.Context, cfg *rest.Con
 		}
 
 	}
+	// If we are here, then we should be okay
+	return nil
+}
+
+// SaveBeKindConfig saves the bekind config to a Kubernetes secret
+func SaveBeKindConfig(cfg *rest.Config, ctx context.Context, ns string, name string) error {
+	// Get the Byteslice of the config
+	bekindconfigByteSlice, err := goyaml.Marshal(viper.AllSettings())
+	if err != nil {
+		return err
+	}
+
+	// Create Kubernetes cilent
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Set up the secret
+	secret := &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Data: map[string][]byte{
+			"config.yaml": bekindconfigByteSlice,
+		},
+		Type: corev1.SecretTypeOpaque, // Default secret type
+	}
+
+	// Create the secret
+	_, err = client.CoreV1().Secrets(ns).Create(ctx, secret, v1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
 	// If we are here, then we should be okay
 	return nil
 }

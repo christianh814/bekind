@@ -214,13 +214,25 @@ on the configuration file that is passed`,
 			}
 		}
 
+		// Set up a restconfig
+		rc, err := utils.GetRestConfig("")
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		// Load manifests into the cluster (if any)
 		if len(postInstallManifests) != 0 {
 			log.Info("Post Deployment Manifests")
-			rc, _ := utils.GetRestConfig("")
 			if err := utils.PostInstallManifests(postInstallManifests, context.TODO(), rc); err != nil {
 				log.Warn("Issue with Post Install Manifests: ", err)
 			}
+		}
+
+		// Save the bekind config to a secret
+		log.Info("Saving bekind config to a secret in \"kube-public\"")
+		err = utils.SaveBeKindConfig(rc, context.TODO(), "kube-public", "bekind-config")
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		// Display Argo CD URL and password if it exists
