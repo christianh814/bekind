@@ -16,7 +16,9 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -35,24 +37,56 @@ var runCmd = &cobra.Command{
 	Long:              profileLongHelp(),
 	ValidArgsFunction: profileValidArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Set Config file based on the profile
-		viper.SetConfigFile(ProfileDir + "/" + args[0] + "/config.yaml")
+		// Look for all yaml files in the profile directory
+		configFiles, err := filepath.Glob(filepath.Join(ProfileDir+"/"+args[0], "*.yaml"))
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		// Read the config file, Only displaying an error if there was a problem reading the file.
-		if err := viper.ReadInConfig(); err != nil {
-			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-				log.Fatal(err)
+		// If no config files are found, exit with an error
+		if len(configFiles) == 0 {
+			log.Fatalf("No config files found in profile directory: %s", ProfileDir+"/"+args[0])
+		}
+
+		// Get view flag
+		view, err := cmd.Flags().GetBool("view")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Iterate over all config files and run the profile for each one
+		for _, configFile := range configFiles {
+			// Set Config file based on the profile
+			viper.SetConfigFile(configFile)
+
+			// Read the config file, Only displaying an error if there was a problem reading the file.
+			if err := viper.ReadInConfig(); err != nil {
+				if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+					log.Fatal(err)
+				}
 			}
-		}
 
-		// If the view flag is set, show the config
-		if view, _ := cmd.Flags().GetBool("view"); view {
-			showconfigCmd.Run(cmd, []string{})
-			os.Exit(0)
-		}
+			// If the view flag is set, show the config
+			if view {
+				// Crude, but it works
+				// TODO: Create a "BeKindStack" YAML struct and use that to display the config
+				fmt.Println("---")
+				showconfigCmd.Run(cmd, []string{})
+			} else {
+				// I assume you want to "Run the profile"
+				if !view {
+					log.Info("Running profile: ", args[0], " with config file: ", filepath.Base(configFile))
+					startCmd.Run(cmd, []string{})
+				}
 
-		// Run the profile
-		startCmd.Run(cmd, []string{})
+			}
+
+			// Clear viper config for next iteration
+			viper.Reset()
+
+			// Reset global variables from start.go to prevent state leakage between iterations
+			ResetGlobalVars()
+		}
 	},
 }
 
@@ -93,7 +127,9 @@ func profileLongHelp() string {
 	return `You can use "run" to run the specified profile. Profiles needs to be
 stored in the ~/.bekind/profiles/{{name}} directory.
 
-The profile directory should contain a config.yaml file. For example:
+The profile directory should contain a config file in YAML format. For example:
 
-~/.bekind/profiles/{{name}}/config.yaml`
+~/.bekind/profiles/{{name}}/config.yaml
+
+NOTE: You can have multiple YAML configurations in the same profile directory.`
 }

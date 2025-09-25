@@ -81,6 +81,16 @@ var Domain string = "127.0.0.1.nip.io"
 // Set the default Kind Image version
 var KindImageVersion string
 
+// ResetGlobalVars resets all global variables to their default state
+// This is needed when running multiple profiles in sequence
+func ResetGlobalVars() {
+	log.Debug("Resetting global variables for next profile iteration")
+	HC = nil // Clear the helm charts slice
+	pullImages = true
+	Domain = "127.0.0.1.nip.io"
+	KindImageVersion = ""
+}
+
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
