@@ -180,8 +180,14 @@ on the configuration file that is passed`,
 
 		// Grab HelmCharts provided in the config file
 		// Read YAML file directly to preserve key case sensitivity
-		if cfgFile != "" {
-			yamlData, err := os.ReadFile(cfgFile)
+		configFileToRead := cfgFile
+		if configFileToRead == "" {
+			// If no config file was specified via flag, check if viper loaded one
+			configFileToRead = viper.ConfigFileUsed()
+		}
+
+		if configFileToRead != "" && viper.IsSet("helmCharts") {
+			yamlData, err := os.ReadFile(configFileToRead)
 			if err != nil {
 				log.Fatal(err)
 			}
