@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/christianh814/bekind/pkg/helm"
 	"github.com/christianh814/bekind/pkg/kind"
@@ -26,11 +27,32 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// convertMapInterface recursively converts map[interface{}]interface{} to map[string]interface{}
+func convertMapInterface(data interface{}) interface{} {
+	switch v := data.(type) {
+	case map[interface{}]interface{}:
+		result := make(map[string]interface{})
+		for key, value := range v {
+			strKey := fmt.Sprintf("%v", key)
+			result[strKey] = convertMapInterface(value)
+		}
+		return result
+	case []interface{}:
+		for i, item := range v {
+			v[i] = convertMapInterface(item)
+		}
+		return v
+	default:
+		return data
+	}
+}
 
 // pullImages set to true by default
 var pullImages bool = true
@@ -43,17 +65,14 @@ type HelmValues struct {
 
 // HC is the extra helmcharts to install, if provided
 var HC []struct {
-	Url       string
-	Repo      string
-	Chart     string
-	Release   string
-	Namespace string
-	Args      []struct {
-		Name  string
-		Value string
-	}
-	Wait    bool
-	Version string
+	Url          string
+	Repo         string
+	Chart        string
+	Release      string
+	Namespace    string
+	ValuesObject map[string]interface{}
+	Wait         bool
+	Version      string
 }
 
 // Set Default domain
@@ -61,6 +80,16 @@ var Domain string = "127.0.0.1.nip.io"
 
 // Set the default Kind Image version
 var KindImageVersion string
+
+// ResetGlobalVars resets all global variables to their default state
+// This is needed when running multiple profiles in sequence
+func ResetGlobalVars() {
+	log.Debug("Resetting global variables for next profile iteration")
+	HC = nil // Clear the helm charts slice
+	pullImages = true
+	Domain = "127.0.0.1.nip.io"
+	KindImageVersion = ""
+}
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
@@ -160,9 +189,66 @@ on the configuration file that is passed`,
 		}
 
 		// Grab HelmCharts provided in the config file
-		err = viper.UnmarshalKey("helmCharts", &HC)
-		if err != nil {
-			log.Fatal(err)
+		// Read YAML file directly to preserve key case sensitivity
+		configFileToRead := cfgFile
+		if configFileToRead == "" {
+			// If no config file was specified via flag, check if viper loaded one
+			configFileToRead = viper.ConfigFileUsed()
+		}
+
+		if configFileToRead != "" && viper.IsSet("helmCharts") {
+			yamlData, err := os.ReadFile(configFileToRead)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Parse just the helmCharts section to preserve case
+			var config struct {
+				HelmCharts []struct {
+					Url          string                 `yaml:"url"`
+					Repo         string                 `yaml:"repo"`
+					Chart        string                 `yaml:"chart"`
+					Release      string                 `yaml:"release"`
+					Namespace    string                 `yaml:"namespace"`
+					ValuesObject map[string]interface{} `yaml:"valuesObject"`
+					Wait         bool                   `yaml:"wait"`
+					Version      string                 `yaml:"version"`
+				} `yaml:"helmCharts"`
+			}
+
+			err = yaml.Unmarshal(yamlData, &config)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Convert to our HC format
+			for _, chart := range config.HelmCharts {
+				// Convert valuesObject from map[interface{}]interface{} to map[string]interface{}
+				convertedValues := make(map[string]interface{})
+				for k, v := range chart.ValuesObject {
+					convertedValues[k] = convertMapInterface(v)
+				}
+
+				HC = append(HC, struct {
+					Url          string
+					Repo         string
+					Chart        string
+					Release      string
+					Namespace    string
+					ValuesObject map[string]interface{}
+					Wait         bool
+					Version      string
+				}{
+					Url:          chart.Url,
+					Repo:         chart.Repo,
+					Chart:        chart.Chart,
+					Release:      chart.Release,
+					Namespace:    chart.Namespace,
+					ValuesObject: convertedValues,
+					Wait:         chart.Wait,
+					Version:      chart.Version,
+				})
+			}
 		}
 
 		// Special conditions for Argo CD
@@ -177,10 +263,9 @@ on the configuration file that is passed`,
 			// 	TODO: Currently it's garbage in garbage out, if the user provides a bad chart it will fail
 			for _, v := range HC {
 				// Install HelmChart
-				HelmArgs := utils.ConvertHelmValsToMap(v.Args)
 				log.Infof("Installing Helm Chart %s/%s from %s", v.Repo, v.Chart, v.Url)
 
-				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, v.Version, v.Wait, HelmArgs); err != nil {
+				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, v.Version, v.Wait, v.ValuesObject); err != nil {
 					log.Fatal(err)
 				}
 

@@ -25,12 +25,11 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/strvals"
 )
 
 var settings *cli.EnvSettings
 
-func Install(namespace, url, repoName, chartName, releaseName, version string, wait bool, args map[string]string) error {
+func Install(namespace, url, repoName, chartName, releaseName, version string, wait bool, valuesObject map[string]interface{}) error {
 
 	// Set the namespace
 	os.Setenv("HELM_NAMESPACE", namespace)
@@ -52,7 +51,7 @@ func Install(namespace, url, repoName, chartName, releaseName, version string, w
 	}
 
 	// Install charts
-	if err := InstallChart(releaseName, repoName, chartName, version, url, wait, args); err != nil {
+	if err := InstallChart(releaseName, repoName, chartName, version, url, wait, valuesObject); err != nil {
 		return err
 	}
 
@@ -155,7 +154,7 @@ func RepoUpdate() error {
 }
 
 // InstallChart
-func InstallChart(name, repo, chart, version, url string, wait bool, args map[string]string) error {
+func InstallChart(name, repo, chart, version, url string, wait bool, valuesObject map[string]interface{}) error {
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
 		return err
@@ -186,9 +185,9 @@ func InstallChart(name, repo, chart, version, url string, wait bool, args map[st
 		return err
 	}
 
-	// Add args
-	if err := strvals.ParseInto(args["set"], vals); err != nil {
-		return err
+	// Merge values from the valuesObject
+	for k, v := range valuesObject {
+		vals[k] = v
 	}
 
 	// Check chart dependencies to make sure all are present in /charts
