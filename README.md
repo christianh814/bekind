@@ -45,76 +45,72 @@ For example:
 
 ```yaml
 domain: "7f000001.nip.io"
-kindImageVersion: "kindest/node:v1.29.1"
+kindImageVersion: "kindest/node:v1.34.0"
 helmCharts:
   - url: "https://kubernetes.github.io/ingress-nginx"
     repo: "ingress-nginx"
     chart: "ingress-nginx"
     release: "nginx-ingress"
     namespace: "ingress-controller"
-    args:
-      - name: 'controller.hostNetwork'
-        value: "true"
-      - name: 'controller.nodeSelector.nginx'
-        value: "ingresshost"
-      - name: 'controller.service.type'
-        value: "ClusterIP"
-      - name: 'controller.tolerations[0].operator'
-        value: "Exists" - name: 'controller.service.externalTrafficPolicy'
-        value: ""
-      - name: 'controller.extraArgs.enable-ssl-passthrough'
-        value: ""
     wait: true
+    valuesObject:
+      controller:
+        extraArgs:
+          enable-ssl-passthrough: ""
+        hostNetwork: true
+        ingressClassResource:
+          default: true
+        nodeSelector:
+          nginx: ingresshost
+        service:
+          externalTrafficPolicy: ""
+          type: ClusterIP
+        tolerations:
+        - operator: Exists
   - url: "https://argoproj.github.io/argo-helm"
     repo: "argo"
     chart: "argo-cd"
     release: "argocd"
     namespace: "argocd"
-    args:
-      - name: 'server.ingress.enabled'
-        value: "true"
-      - name: 'server.ingress.hosts[0]'
-        value: "argocd.7f000001.nip.io"
-      - name: 'server.ingress.ingressClassName'
-        value: "nginx"
-      - name: 'server.ingress.https'
-        value: "true"
-      - name: 'server.ingress.annotations."nginx\.ingress\.kubernetes\.io/ssl-passthrough"'
-        value: "true"
-      - name: 'server.ingress.annotations."nginx\.ingress\.kubernetes\.io/force-ssl-redirect"'
-        value: "true"
     wait: true
-  - url: "https://redhat-developer.github.io/redhat-helm-charts"
-    repo: "redhat-helm-charts"
-    chart: "quarkus"
-    release: "myapp"
-    namespace: "demo"
-    version: "0.0.3"
-    args:
-      - name: 'build.enabled'
-        value: "false"
-      - name: 'deploy.route.enabled'
-        value: "false"
-      - name: 'image.name' 
-        value: "quay.io/ablock/gitops-helm-quarkus"
-    wait: true
-  - url: "oci://ghcr.io/akuity/kargo-charts/kargo"
-    repo: "kargo"
-    chart: "kargo"
-    release: "kargo"
-    namespace: "kargo"
-    args: 
-      - name: 'api.adminAccount.password'
-        value: "admin"
-      - name: 'controller.logLevel'
-        value: "DEBUG"
-      - name: 'api.adminAccount.tokenTTL'
-        value: "24h"
-      - name: 'api.adminAccount.tokenSigningKey'
-        value: "secret"
-    wait: true
+    valuesObject:
+      configs:
+        secret:
+          argocdServerAdminPassword: $2a$10$pKM9yRpR2G5X8c3.M.lgs.v5xBBzEyiJnH5vrWYGkO3JNr5HTW8yq
+        cm:
+          kustomize.buildOptions: "--enable-helm"
+          resource.customizations.health.argoproj.io_Application: |
+            hs = {}
+            hs.status = "Progressing"
+            hs.message = ""
+            if obj.status ~= nil then
+              if obj.status.health ~= nil then
+                hs.status = obj.status.health.status
+                if obj.status.health.message ~= nil then
+                  hs.message = obj.status.health.message
+                end
+              end
+            end
+            return hs
+          resource.customizations.health.networking.k8s.io_Ingress: |
+            hs = {}
+            hs.status = "Healthy"
+            hs.message = "Probably just fine"
+            return hs
+      global:
+        domain: argocd.7f000001.nip.io
+      server:
+        ingress:
+          annotations:
+            '"nginx.ingress.kubernetes.io/force-ssl-redirect"': true
+            '"nginx.ingress.kubernetes.io/ssl-passthrough"': true
+          enabled: true
+          hostname: argocd.7f000001.nip.io
+          ingressClassName: nginx
+          tls: true
 kindConfig: |
   kind: Cluster
+  name: argocd-ingress
   apiVersion: kind.x-k8s.io/v1alpha4
   networking:
     podSubnet: "10.254.0.0/16"
@@ -138,9 +134,13 @@ loadDockerImages:
   pullImages: true
   images:
     - gcr.io/kuar-demo/kuard-amd64:blue
+    - quay.io/christianh814/simple-go:latest
+    - quay.io/ablock/gitops-helm-quarkus:latest
+    - christianh814/gobg:latest
 postInstallManifests:
-  - 'file:///path/to/local/k8s/file.yaml'
-  - 'https://raw.githubusercontent.com/christianh814/gitops-examples/main/gobg/gobg.yaml'
+  - "file:///home/chernand/workspace/argocd/bunch-o-apps/helm-app-example.yaml"
+  - "file:///home/chernand/workspace/argocd/bunch-o-apps/gobg.yaml"
+  - "file:///home/chernand/workspace/argocd/bunch-o-apps/simple-go.yaml"
 ```
 
 # Helm Chart Config
@@ -153,8 +153,8 @@ The following are valid configurations for the `helmCharts` section:
 * `release`: What to call the release when it's installed (*REQUIRED*).
 * `namespace`: The namespace to install the release to, it'll create the namespace if it's not already there (*REQUIRED*).
 * `version`: The version of the Helm chart to install (*Optional*)
-* `args`: The parameter of the `--set` command to change the values in a comma separated format. This is a list of key value pairs using `name` for the key and `value` for the value. (*Optional*)
 * `wait`: Wait for the release to be installed before returning (*Optional*); default is `false`.
+* `valuesObject`: A YAML object to use as the values file (*Optional*).
 
 # Loading Docker Images
 
