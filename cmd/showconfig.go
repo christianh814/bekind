@@ -37,8 +37,8 @@ var showconfigCmd = &cobra.Command{
 In the case you use --system it will print out the config that is saved on the cluster. This is
 usually the "config.yaml" value in the "bekind-config" secret in the "kube-public" namespace.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		byteSlice := []byte{}
-		err := error(nil)
+		var byteSlice []byte
+		var err error
 
 		// Check to see if the user wants to print out the config saved on the cluster
 		if viper.GetBool("system") {
