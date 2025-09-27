@@ -14,7 +14,7 @@ Bekind will:
 Prerequisites:
 
 * go version `1.20` or newer
-* Docker (Podman is still [considered experemental](https://github.com/kubernetes-sigs/kind/pull/1302) by KIND)
+* Docker (Podman is still [considered experemental](https://kind.sigs.k8s.io/docs/design/principles/#target-cri-functionality) by KIND)
 
 
 Install with:
@@ -160,7 +160,7 @@ The following are valid configurations for the `helmCharts` section:
 
 The following are valid configurations for the `loadDockerImages` section:
 
-> :rotating_light: **NOTE** Only `docker` is supported see [KIND upstream issue](https://github.com/kubernetes-sigs/kind/pull/3109)
+> :rotating_light: **NOTE** Only `docker` is supported see [KIND upstream issue](https://github.com/kubernetes-sigs/kind/issues/2038)
 
 * `pullImages`: To perform a pull of the image before lodaing (opional and defaults to `true` if not supplied). This is a "global" setting (you're either pulling them all or none)
 * `images`: List of images to do the pull.
