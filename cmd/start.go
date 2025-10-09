@@ -181,11 +181,14 @@ on the configuration file that is passed`,
 		}
 
 		// Load images into the cluster
-		if len(dockerImages) != 0 {
+		// TODO: look into LookupEnv instead? Not sure what's better here
+		if len(dockerImages) > 0 && os.Getenv("KIND_EXPERIMENTAL_PROVIDER") == "" {
 			log.Info("Loading Images in KIND cluster")
 			if err := kind.LoadDockerImage(dockerImages, clusterName, pullImages); err != nil {
 				log.Fatal(err)
 			}
+		} else if len(dockerImages) > 0 {
+			log.Warn("KIND_EXPERIMENTAL_PROVIDER is set, image loading only works with \"docker\" - skipping image load")
 		}
 
 		// Grab HelmCharts provided in the config file
