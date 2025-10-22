@@ -107,11 +107,6 @@ func init() {
 
 	// Mark profile-dir flag and config flag as mutually exclusive
 	runCmd.MarkFlagsMutuallyExclusive("profile-dir", "config")
-
-	// Mark the config flag as hidden for this command only as it doesn't make sense to use it with the run command
-	if configFlag := runCmd.Flags().Lookup("config"); configFlag != nil {
-		configFlag.Hidden = true
-	}
 }
 
 // profileValidArgs returns a list of profiles for tab completion
