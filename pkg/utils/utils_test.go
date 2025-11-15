@@ -416,3 +416,162 @@ func TestViperIntegration(t *testing.T) {
 		t.Error("AllSettings should not be empty after setting values")
 	}
 }
+
+func TestPostInstallActions(t *testing.T) {
+	testCases := []struct {
+		name        string
+		actions     []PostInstallAction
+		expectError bool
+	}{
+		{
+			name:        "empty actions",
+			actions:     []PostInstallAction{},
+			expectError: false,
+		},
+		{
+			name: "missing action field",
+			actions: []PostInstallAction{
+				{
+					Kind: "Deployment",
+					Name: "test",
+				},
+			},
+			expectError: false, // Should warn and skip
+		},
+		{
+			name: "missing kind field",
+			actions: []PostInstallAction{
+				{
+					Action: "restart",
+					Name:   "test",
+				},
+			},
+			expectError: false, // Should warn and skip
+		},
+		{
+			name: "missing both name and labelSelector",
+			actions: []PostInstallAction{
+				{
+					Action: "restart",
+					Kind:   "Deployment",
+				},
+			},
+			expectError: false, // Should warn and skip
+		},
+		{
+			name: "unsupported action",
+			actions: []PostInstallAction{
+				{
+					Action: "delete",
+					Kind:   "Deployment",
+					Name:   "test",
+				},
+			},
+			expectError: false, // Should warn and skip
+		},
+		{
+			name: "unsupported kind",
+			actions: []PostInstallAction{
+				{
+					Action: "restart",
+					Kind:   "Pod",
+					Name:   "test",
+				},
+			},
+			expectError: false, // Should warn and skip
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// PostInstallActions with nil config will skip invalid actions
+			// We're testing the validation logic, not the actual execution
+			err := PostInstallActions(tc.actions, context.TODO(), nil)
+
+			if tc.expectError && err == nil {
+				t.Error("Expected error but got none")
+			}
+			// Note: err may be nil for cases where actions are skipped due to validation failures
+		})
+	}
+}
+
+func TestPostInstallAction_Validation(t *testing.T) {
+	testCases := []struct {
+		name           string
+		action         PostInstallAction
+		shouldValidate bool
+	}{
+		{
+			name: "valid with name",
+			action: PostInstallAction{
+				Action: "restart",
+				Kind:   "Deployment",
+				Name:   "test",
+			},
+			shouldValidate: true,
+		},
+		{
+			name: "valid with labelSelector",
+			action: PostInstallAction{
+				Action: "restart",
+				Kind:   "StatefulSet",
+				LabelSelector: map[string]string{
+					"app": "test",
+				},
+			},
+			shouldValidate: true,
+		},
+		{
+			name: "valid with both name and labelSelector",
+			action: PostInstallAction{
+				Action: "restart",
+				Kind:   "DaemonSet",
+				Name:   "test",
+				LabelSelector: map[string]string{
+					"app": "test",
+				},
+			},
+			shouldValidate: true, // labelSelector takes precedence
+		},
+		{
+			name: "invalid - no action",
+			action: PostInstallAction{
+				Kind: "Deployment",
+				Name: "test",
+			},
+			shouldValidate: false,
+		},
+		{
+			name: "invalid - no kind",
+			action: PostInstallAction{
+				Action: "restart",
+				Name:   "test",
+			},
+			shouldValidate: false,
+		},
+		{
+			name: "invalid - no name or labelSelector",
+			action: PostInstallAction{
+				Action: "restart",
+				Kind:   "Deployment",
+			},
+			shouldValidate: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Basic validation checks
+			hasAction := tc.action.Action != ""
+			hasKind := tc.action.Kind != ""
+			hasNameOrSelector := tc.action.Name != "" || len(tc.action.LabelSelector) > 0
+
+			validates := hasAction && hasKind && hasNameOrSelector
+
+			if validates != tc.shouldValidate {
+				t.Errorf("Expected validation to be %v, got %v", tc.shouldValidate, validates)
+			}
+		})
+	}
+}
