@@ -32,6 +32,9 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 )
 
 // convertMapInterface recursively converts map[interface{}]interface{} to map[string]interface{}
@@ -290,11 +293,46 @@ on the configuration file that is passed`,
 					// Get argo ingress
 					argoIngress, err = client.NetworkingV1().Ingresses("argocd").Get(context.TODO(), "argocd-server", metav1.GetOptions{})
 					if err != nil {
-						log.Fatal(err)
+						if k8serrors.IsNotFound(err) {
+							// Try to get HTTPRoute instead
+							log.Info("Ingress not found, trying HTTPRoute")
+
+							// Get rest config for dynamic client
+							restConfig, err := utils.GetRestConfig("")
+							if err != nil {
+								log.Fatal(err)
+							}
+
+							// Create dynamic client
+							dynamicClient, err := dynamic.NewForConfig(restConfig)
+							if err != nil {
+								log.Fatal(err)
+							}
+
+							httpRouteGVR := schema.GroupVersionResource{
+								Group:    "gateway.networking.k8s.io",
+								Version:  "v1",
+								Resource: "httproutes",
+							}
+							httpRoute, err := dynamicClient.Resource(httpRouteGVR).Namespace("argocd").Get(context.TODO(), "argocd-server", metav1.GetOptions{})
+							if err != nil {
+								log.Fatal(err)
+							}
+							// Extract hostname from HTTPRoute
+							hostnames, found, err := unstructured.NestedStringSlice(httpRoute.Object, "spec", "hostnames")
+							if err != nil || !found || len(hostnames) == 0 {
+								log.Fatal("Could not extract hostnames from HTTPRoute")
+							}
+							argoUrl = fmt.Sprintf("https://%s", hostnames[0])
+						} else {
+							log.Fatal(err)
+						}
+					} else {
+						// Save information for later use from Ingress
+						argoUrl = fmt.Sprintf("https://%s", argoIngress.Spec.Rules[0].Host)
 					}
 
 					// Save information for later use
-					argoUrl = fmt.Sprintf("https://%s", argoIngress.Spec.Rules[0].Host)
 					argoPass = string(argoSecret.Data["password"])
 
 				}
