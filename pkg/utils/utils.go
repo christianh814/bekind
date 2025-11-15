@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -292,6 +293,236 @@ func PostInstallManifests(manifests []string, ctx context.Context, cfg *rest.Con
 
 	}
 	// If we are here, then we should be okay
+	return nil
+}
+
+// PostInstallAction represents an action to be executed after installation
+type PostInstallAction struct {
+	Action        string            `mapstructure:"action"`
+	Group         string            `mapstructure:"group"`
+	Version       string            `mapstructure:"version"`
+	Kind          string            `mapstructure:"kind"`
+	Name          string            `mapstructure:"name"`
+	Namespace     string            `mapstructure:"namespace"`
+	LabelSelector map[string]string `mapstructure:"labelSelector"`
+}
+
+// PostInstallActions executes post-install actions on Kubernetes resources
+func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *rest.Config) error {
+	// Validate and execute each action
+	for _, action := range actions {
+		// Validate required fields
+		if action.Action == "" {
+			log.Warn("Skipping action with empty 'action' field")
+			continue
+		}
+		if action.Kind == "" {
+			log.Warn("Skipping action with empty 'kind' field")
+			continue
+		}
+		// Either name or labelSelector must be provided
+		if action.Name == "" && len(action.LabelSelector) == 0 {
+			log.Warn("Skipping action with empty 'name' and 'labelSelector' fields - at least one is required")
+			continue
+		}
+
+		// Validate action type
+		if action.Action != "restart" {
+			log.Warnf("Skipping unsupported action '%s' for %s/%s", action.Action, action.Kind, action.Name)
+			continue
+		}
+
+		// Validate kind
+		validKinds := map[string]bool{
+			"Deployment":  true,
+			"StatefulSet": true,
+			"DaemonSet":   true,
+		}
+		if !validKinds[action.Kind] {
+			log.Warnf("Skipping unsupported kind '%s' for %s", action.Kind, action.Name)
+			continue
+		}
+
+		// Set defaults
+		group := action.Group
+		if group == "" {
+			group = "core"
+		}
+		version := action.Version
+		if version == "" {
+			version = "v1"
+		}
+		namespace := action.Namespace
+		if namespace == "" {
+			namespace = "default"
+		}
+
+		// For Deployment, StatefulSet, and DaemonSet, the group should be "apps"
+		// Override if user provided "core" or empty
+		if action.Kind == "Deployment" || action.Kind == "StatefulSet" || action.Kind == "DaemonSet" {
+			group = "apps"
+		}
+
+		// Execute the restart action
+		// LabelSelector takes precedence over Name
+		if len(action.LabelSelector) > 0 {
+			// Restart by label selector
+			log.Infof("Restarting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
+			if err := restartResourcesByLabel(ctx, cfg, group, version, action.Kind, namespace, action.LabelSelector); err != nil {
+				log.Warnf("Failed to restart %s(s) by label: %v", action.Kind, err)
+				continue
+			}
+			log.Infof("Successfully restarted %s(s) by label selector", action.Kind)
+		} else {
+			// Restart by name
+			log.Infof("Restarting %s/%s in namespace %s", action.Kind, action.Name, namespace)
+			if err := restartResource(ctx, cfg, group, version, action.Kind, action.Name, namespace); err != nil {
+				log.Warnf("Failed to restart %s/%s: %v", action.Kind, action.Name, err)
+				continue
+			}
+			log.Infof("Successfully restarted %s/%s", action.Kind, action.Name)
+		}
+	}
+
+	return nil
+}
+
+// restartResource performs a rollout restart on a Kubernetes resource
+func restartResource(ctx context.Context, cfg *rest.Config, group, version, kind, name, namespace string) error {
+	// Create dynamic client
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Build the GVR (GroupVersionResource)
+	var resource string
+	switch kind {
+	case "Deployment":
+		resource = "deployments"
+	case "StatefulSet":
+		resource = "statefulsets"
+	case "DaemonSet":
+		resource = "daemonsets"
+	default:
+		return errors.New("unsupported kind: " + kind)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	// Get the resource
+	obj, err := dyn.Resource(gvr).Namespace(namespace).Get(ctx, name, v1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	// Add or update the restart annotation on the pod template spec
+	// This is what triggers the actual rollout restart
+	annotations, found, err := unstructured.NestedStringMap(obj.Object, "spec", "template", "metadata", "annotations")
+	if err != nil {
+		return err
+	}
+	if !found || annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+	
+	if err := unstructured.SetNestedStringMap(obj.Object, annotations, "spec", "template", "metadata", "annotations"); err != nil {
+		return err
+	}
+
+	// Update the resource
+	_, err = dyn.Resource(gvr).Namespace(namespace).Update(ctx, obj, v1.UpdateOptions{})
+	return err
+}
+
+// restartResourcesByLabel performs a rollout restart on multiple Kubernetes resources matching a label selector
+func restartResourcesByLabel(ctx context.Context, cfg *rest.Config, group, version, kind, namespace string, labelSelector map[string]string) error {
+	// Create dynamic client
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Build the GVR (GroupVersionResource)
+	var resource string
+	switch kind {
+	case "Deployment":
+		resource = "deployments"
+	case "StatefulSet":
+		resource = "statefulsets"
+	case "DaemonSet":
+		resource = "daemonsets"
+	default:
+		return errors.New("unsupported kind: " + kind)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	// Convert label selector map to string format (key1=value1,key2=value2)
+	var labelPairs []string
+	for k, v := range labelSelector {
+		labelPairs = append(labelPairs, k+"="+v)
+	}
+	labelSelectorString := ""
+	for i, pair := range labelPairs {
+		if i > 0 {
+			labelSelectorString += ","
+		}
+		labelSelectorString += pair
+	}
+
+	// List resources matching the label selector
+	list, err := dyn.Resource(gvr).Namespace(namespace).List(ctx, v1.ListOptions{
+		LabelSelector: labelSelectorString,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(list.Items) == 0 {
+		log.Warnf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
+		return nil
+	}
+
+	// Restart each matching resource
+	for _, obj := range list.Items {
+		resourceName := obj.GetName()
+		log.Infof("Restarting %s/%s in namespace %s", kind, resourceName, namespace)
+		
+		// Add or update the restart annotation on the pod template spec
+		annotations, found, err := unstructured.NestedStringMap(obj.Object, "spec", "template", "metadata", "annotations")
+		if err != nil {
+			log.Warnf("Failed to get annotations for %s/%s: %v", kind, resourceName, err)
+			continue
+		}
+		if !found || annotations == nil {
+			annotations = make(map[string]string)
+		}
+		annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+		
+		if err := unstructured.SetNestedStringMap(obj.Object, annotations, "spec", "template", "metadata", "annotations"); err != nil {
+			log.Warnf("Failed to set annotations for %s/%s: %v", kind, resourceName, err)
+			continue
+		}
+
+		// Update the resource
+		_, err = dyn.Resource(gvr).Namespace(namespace).Update(ctx, &obj, v1.UpdateOptions{})
+		if err != nil {
+			log.Warnf("Failed to update %s/%s: %v", kind, resourceName, err)
+			continue
+		}
+		log.Infof("Successfully restarted %s/%s", kind, resourceName)
+	}
+
 	return nil
 }
 
