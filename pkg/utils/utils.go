@@ -352,9 +352,6 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 
 		// Set defaults
 		group := action.Group
-		if group == "" {
-			group = "core"
-		}
 		version := action.Version
 		if version == "" {
 			version = "v1"
@@ -365,9 +362,15 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 		}
 
 		// For Deployment, StatefulSet, and DaemonSet, the group should be "apps"
-		// Override if user provided "core" or empty
+		// For Pod and other core resources, the group should be empty string
 		if action.Kind == "Deployment" || action.Kind == "StatefulSet" || action.Kind == "DaemonSet" {
 			group = "apps"
+		} else if action.Kind == "Pod" && group == "" {
+			// Core API resources like Pod use empty string for group
+			group = ""
+		} else if group == "core" {
+			// Convert "core" string to empty string for core API group
+			group = ""
 		}
 
 		// Execute the action based on type
