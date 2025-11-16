@@ -181,7 +181,7 @@ loadDockerImages:
 
 **Type**: `array`  
 **Optional**: Yes  
-**Description**: List of Kubernetes YAML manifest files to apply after cluster setup.
+**Description**: List of Kubernetes YAML manifest files to apply after cluster setup. Supports both local files (`file://`) and remote URLs (`http://` or `https://`).
 
 See the [Post Install Manifests feature documentation]({% link features/post-install-manifests.md %}) for detailed information.
 
@@ -190,7 +190,8 @@ See the [Post Install Manifests feature documentation]({% link features/post-ins
 ```yaml
 postInstallManifests:
   - "file:///home/user/k8s/app.yaml"
-  - "file:///home/user/k8s/service.yaml"
+  - "https://example.com/configs/service.yaml"
+  - "file:///home/user/k8s/ingress.yaml"
 ```
 
 ---
