@@ -259,11 +259,18 @@ loadDockerImages:
     - my-api:dev
 ```
 
-Build your images before starting the cluster:
+Build your images before running the cluster:
 
 ```bash
 docker build -t my-app:dev .
-bekind start --profile dev
+bekind run dev
+```
+
+Or use `bekind start` with a config file:
+
+```bash
+docker build -t my-app:dev .
+bekind start --config ~/.bekind/profiles/dev/config.yaml
 ```
 
 ### CI/CD Workflow

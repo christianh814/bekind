@@ -181,7 +181,7 @@ loadDockerImages:
 
 **Type**: `array`  
 **Optional**: Yes  
-**Description**: List of Kubernetes YAML manifest files to apply after cluster setup.
+**Description**: List of Kubernetes YAML manifest files to apply after cluster setup. Supports both local files (`file://`) and remote URLs (`http://` or `https://`).
 
 See the [Post Install Manifests feature documentation]({% link features/post-install-manifests.md %}) for detailed information.
 
@@ -190,7 +190,8 @@ See the [Post Install Manifests feature documentation]({% link features/post-ins
 ```yaml
 postInstallManifests:
   - "file:///home/user/k8s/app.yaml"
-  - "file:///home/user/k8s/service.yaml"
+  - "https://example.com/configs/service.yaml"
+  - "file:///home/user/k8s/ingress.yaml"
 ```
 
 ---
@@ -235,15 +236,49 @@ mkdir -p ~/.bekind/profiles/argocd
 nano ~/.bekind/profiles/argocd/config.yaml
 ```
 
+You can also have multiple YAML configuration files in the same profile directory. All `.yaml` files in the profile directory will be executed when you run the profile.
+
 ### Using a Profile
 
+Use the `run` command to execute a profile:
+
 ```bash
-bekind start --profile argocd
+bekind run argocd
+```
+
+This will look for configuration files in `~/.bekind/profiles/argocd/` and execute each one.
+
+### Custom Profile Directory
+
+If your profiles are stored in a different location, use the `--profile-dir` flag:
+
+```bash
+bekind run myprofile --profile-dir /path/to/profiles
+```
+
+For example, if your config is at `/tmp/foo/config.yaml`:
+
+```bash
+bekind run foo --profile-dir /tmp
+```
+
+### Viewing Profile Configuration
+
+To view a profile's configuration without running it:
+
+```bash
+bekind run argocd --view
 ```
 
 ### Default Configuration
 
-If no profile is specified, BeKind uses `~/.bekind/config.yaml`.
+If you don't want to use profiles, you can use `bekind start` with a config file:
+
+```bash
+bekind start --config ~/.bekind/config.yaml
+```
+
+Or place your config at `~/.bekind/config.yaml` and BeKind will use it by default.
 
 ---
 

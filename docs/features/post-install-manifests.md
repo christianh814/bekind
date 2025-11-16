@@ -43,9 +43,18 @@ postInstallManifests:
 
 ## Configuration Format
 
+### Supported URL Formats
+
+BeKind supports multiple ways to specify manifest locations:
+
+- **Local files**: `file://` URLs with absolute paths
+- **HTTP(S) URLs**: Direct links to manifests served as `text/plain`
+
+You can mix and match both types in the same configuration.
+
 ### File URLs
 
-Each manifest must be specified as a `file://` URL with an absolute path:
+Local files must be specified as `file://` URLs with absolute paths:
 
 ```yaml
 postInstallManifests:
@@ -55,8 +64,6 @@ postInstallManifests:
 
 {: .warning }
 Relative paths are not supported. Always use absolute paths with the `file://` prefix.
-
-### Path Examples
 
 **Linux/macOS**:
 ```yaml
@@ -69,6 +76,31 @@ postInstallManifests:
 ```yaml
 postInstallManifests:
   - "file:///C:/Users/username/k8s/app.yaml"
+```
+
+### HTTP(S) URLs
+
+Manifests can be fetched from remote URLs:
+
+```yaml
+postInstallManifests:
+  - "https://yoursite.example.org/manifests/deployment.yaml"
+  - "http://internal-server.local/configs/service.yaml"
+```
+
+{: .note }
+Remote manifests must be served with the `text/plain` or `application/yaml` content type.
+
+### Mixed Configuration
+
+You can combine local files and remote URLs:
+
+```yaml
+postInstallManifests:
+  - "file:///home/user/local/namespace.yaml"
+  - "https://example.com/shared/rbac.yaml"
+  - "file:///home/user/local/deployment.yaml"
+  - "https://example.com/configs/service.yaml"
 ```
 
 ---
@@ -92,6 +124,25 @@ postInstallManifests:
   - "file:///home/user/apps/backend/all.yaml"
   - "file:///home/user/apps/database/all.yaml"
   - "file:///home/user/networking/ingress.yaml"
+```
+
+### Remote Manifests
+
+```yaml
+postInstallManifests:
+  - "https://raw.githubusercontent.com/user/repo/main/manifests/app.yaml"
+  - "https://gist.githubusercontent.com/user/abc123/raw/deployment.yaml"
+  - "https://yoursite.example.org/configs/service.yaml"
+```
+
+### Mixed Local and Remote
+
+```yaml
+postInstallManifests:
+  - "file:///home/user/k8s/namespace.yaml"
+  - "https://example.com/configs/base-config.yaml"
+  - "file:///home/user/k8s/secrets.yaml"
+  - "https://example.com/configs/monitoring.yaml"
 ```
 
 ### With Argo CD Applications
@@ -168,7 +219,7 @@ spec:
         image: my-app:latest
 ```
 
-### File Accessibility
+### Local File Accessibility
 
 Ensure BeKind can read the manifest files:
 
@@ -178,6 +229,23 @@ ls -l /home/user/k8s/app.yaml
 
 # Check file permissions
 chmod 644 /home/user/k8s/app.yaml
+```
+
+### Remote URL Accessibility
+
+For HTTP(S) URLs, ensure:
+- The URL is accessible from where BeKind is running
+- The server returns `text/plain` or `application/yaml` content type
+- No authentication is required, or use a URL with embedded credentials (not recommended for production)
+- HTTPS certificates are valid (or use HTTP for internal/trusted networks)
+
+Test URL accessibility:
+
+```bash
+# Test with curl
+curl -I https://example.com/manifests/app.yaml
+
+# Should return 200 OK with text/plain or application/yaml content type
 ```
 
 ---
@@ -240,7 +308,9 @@ Currently, only YAML files are supported. JSON manifests are not supported.
 
 ### File Not Found
 
-If BeKind can't find a manifest file:
+If BeKind can't find a manifest:
+
+**For local files:**
 
 1. **Check the path is absolute**:
    ```yaml
@@ -262,6 +332,24 @@ If BeKind can't find a manifest file:
    ```bash
    chmod 644 /home/user/project/manifests/app.yaml
    ```
+
+**For remote URLs:**
+
+1. **Test URL accessibility**:
+   ```bash
+   curl -v https://example.com/manifests/app.yaml
+   ```
+
+2. **Check content type**:
+   ```bash
+   curl -I https://example.com/manifests/app.yaml
+   # Should see: Content-Type: text/plain or application/yaml
+   ```
+
+3. **Verify network connectivity**:
+   - Can you reach the server from your machine?
+   - Are there firewall rules blocking access?
+   - Is the URL correct (check for typos)?
 
 ### Application Failures
 
@@ -337,6 +425,20 @@ If resources depend on each other:
 
 ## Best Practices
 
+### Use Remote Manifests for Shared Configurations
+
+Store common manifests in a central location:
+
+```yaml
+postInstallManifests:
+  # Shared base configuration
+  - "https://config.company.com/k8s/base/namespace.yaml"
+  - "https://config.company.com/k8s/base/rbac.yaml"
+  # Local overrides
+  - "file:///home/user/local/secrets.yaml"
+  - "file:///home/user/local/app.yaml"
+```
+
 ### Organize by Environment
 
 ```
@@ -358,6 +460,13 @@ Reference in config:
 postInstallManifests:
   - "file://${HOME}/.bekind/profiles/dev/manifests/namespace.yaml"
   - "file://${HOME}/.bekind/profiles/dev/manifests/apps.yaml"
+```
+
+Or use remote URLs for consistency:
+```yaml
+postInstallManifests:
+  - "https://github.com/company/k8s-configs/raw/main/dev/namespace.yaml"
+  - "https://github.com/company/k8s-configs/raw/main/dev/apps.yaml"
 ```
 
 ### Combine Related Resources

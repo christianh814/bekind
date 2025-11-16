@@ -14,8 +14,11 @@ For complete documentation, including installation instructions, configuration o
 # Install
 go install github.com/christianh814/bekind@latest
 
-# Start a cluster
+# Start a cluster with default config
 bekind start
+
+# Or run a saved profile
+bekind run myprofile
 
 # List clusters
 bekind list
@@ -34,4 +37,4 @@ bekind destroy
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the Apache License 2.0. See `LICENSE` for more information.
