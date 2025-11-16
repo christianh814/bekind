@@ -138,6 +138,14 @@ on the configuration file that is passed`,
 		// TODO: support for JSON formatted K8S Manifests
 		postInstallManifests := viper.GetStringSlice("postInstallManifests")
 
+		// Get post install actions if any
+		var postInstallActions []utils.PostInstallAction
+		if viper.IsSet("postInstallActions") {
+			if err := viper.UnmarshalKey("postInstallActions", &postInstallActions); err != nil {
+				log.Warn("Issue parsing postInstallActions: ", err)
+			}
+		}
+
 		// Set the kindConfig as the config file for Viper
 		kindConfig := viper.GetString("kindConfig")
 		if len(kindConfig) == 0 {
@@ -351,6 +359,14 @@ on the configuration file that is passed`,
 			log.Info("Post Deployment Manifests")
 			if err := utils.PostInstallManifests(postInstallManifests, context.TODO(), rc); err != nil {
 				log.Warn("Issue with Post Install Manifests: ", err)
+			}
+		}
+
+		// Execute post install actions (if any)
+		if len(postInstallActions) != 0 {
+			log.Info("Post Install Actions")
+			if err := utils.PostInstallActions(postInstallActions, context.TODO(), rc); err != nil {
+				log.Warn("Issue with Post Install Actions: ", err)
 			}
 		}
 

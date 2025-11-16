@@ -41,7 +41,8 @@ For example:
 * `kindConfig`: A custom [kind config](https://kind.sigs.k8s.io/docs/user/configuration/). It's "garbage in/garbage out".
 * `helmCharts`: Different Helm Charts to install on startup. "garbage in/garbage out". See [Helm Chart Config](#helm-chart-config) for more info.
 * `loadDockerImages`: List of images to load onto the nodes. See the [Loading Docker Images](#loading-docker-images) section below for more info.
-* `postInstallManifests`: List of YAML files to apply to the KIND cluster after setup. This is the last step to run in the process. There is no checks done and any errors are from the K8S API. Currently only YAML files are supported. It's "garbage in/garbage out".
+* `postInstallManifests`: List of YAML files to apply to the KIND cluster after setup. There is no checks done and any errors are from the K8S API. Currently only YAML files are supported. It's "garbage in/garbage out".
+* `postInstallActions`: Actions to perform on Kubernetes resources after installation. See [Post Install Actions](#post-install-actions) for more info.
 
 ```yaml
 domain: "7f000001.nip.io"
@@ -141,6 +142,25 @@ postInstallManifests:
   - "file:///home/chernand/workspace/argocd/bunch-o-apps/helm-app-example.yaml"
   - "file:///home/chernand/workspace/argocd/bunch-o-apps/gobg.yaml"
   - "file:///home/chernand/workspace/argocd/bunch-o-apps/simple-go.yaml"
+postInstallActions:
+  - action: restart
+    kind: Deployment
+    name: argocd-server
+    namespace: argocd
+  - action: restart
+    kind: Deployment
+    namespace: argocd
+    labelSelector:
+      app.kubernetes.io/name: argocd-applicationset-controller
+  - action: delete
+    kind: Pod
+    name: old-pod
+    namespace: default
+  - action: delete
+    kind: Pod
+    namespace: kube-system
+    labelSelector:
+      app: cleanup
 ```
 
 # Helm Chart Config
@@ -164,3 +184,107 @@ The following are valid configurations for the `loadDockerImages` section:
 
 * `pullImages`: To perform a pull of the image before lodaing (opional and defaults to `true` if not supplied). This is a "global" setting (you're either pulling them all or none)
 * `images`: List of images to do the pull.
+
+# Post Install Actions
+
+The `postInstallActions` section allows you to perform actions on Kubernetes resources after the cluster setup is complete. This runs after Helm charts are installed and manifests are applied.
+
+Currently supported actions:
+- `restart`: Performs a rollout restart on the specified resources (equivalent to `kubectl rollout restart`)
+- `delete`: Deletes the specified resources (equivalent to `kubectl delete`)
+
+## Configuration Options
+
+* `action`: The action to perform (*REQUIRED*). Supported values: `restart`, `delete`.
+* `kind`: The kind of Kubernetes resource (*REQUIRED*). 
+  - For `restart`: `Deployment`, `StatefulSet`, `DaemonSet`
+  - For `delete`: `Pod`
+* `namespace`: The namespace where the resource(s) exist (*Optional*). Defaults to `default` if not specified.
+* `name`: The name of the specific resource (*Optional* - either `name` or `labelSelector` must be provided).
+* `labelSelector`: A map of labels to select multiple resources (*Optional* - either `name` or `labelSelector` must be provided).
+* `group`: The API group (*Optional*). Defaults to `core` for Pod, `apps` for Deployment/StatefulSet/DaemonSet.
+* `version`: The API version (*Optional*). Defaults to `v1`.
+
+## Restart by Name
+
+To restart a specific resource by name:
+
+```yaml
+postInstallActions:
+  - action: restart
+    kind: Deployment
+    name: argocd-server
+    namespace: argocd
+```
+
+This is equivalent to running:
+```bash
+kubectl rollout restart deployment/argocd-server -n argocd
+```
+
+## Restart by Label Selector
+
+To restart all resources matching a label selector:
+
+```yaml
+postInstallActions:
+  - action: restart
+    kind: Deployment
+    namespace: argocd
+    labelSelector:
+      app.kubernetes.io/name: argocd-applicationset-controller
+```
+
+This is equivalent to running:
+```bash
+kubectl rollout restart deployment -n argocd -l app.kubernetes.io/name=argocd-applicationset-controller
+```
+
+You can use multiple labels in the selector:
+
+```yaml
+postInstallActions:
+  - action: restart
+    kind: Deployment
+    namespace: my-namespace
+    labelSelector:
+      app: myapp
+      environment: production
+```
+
+**Note:** If both `name` and `labelSelector` are provided, `labelSelector` takes precedence and `name` is ignored.
+
+## Delete by Name
+
+To delete a specific Pod by name:
+
+```yaml
+postInstallActions:
+  - action: delete
+    kind: Pod
+    name: foo
+    namespace: bar
+```
+
+This is equivalent to running:
+```bash
+kubectl delete pod/foo -n bar
+```
+
+## Delete by Label Selector
+
+To delete all Pods matching a label selector:
+
+```yaml
+postInstallActions:
+  - action: delete
+    kind: Pod
+    namespace: bazz
+    labelSelector:
+      app.kubernetes.io/instance: bizz
+```
+
+This is equivalent to running:
+```bash
+kubectl delete pod -n bazz -l app.kubernetes.io/instance=bizz
+```
