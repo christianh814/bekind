@@ -152,6 +152,15 @@ postInstallActions:
     namespace: argocd
     labelSelector:
       app.kubernetes.io/name: argocd-applicationset-controller
+  - action: delete
+    kind: Pod
+    name: old-pod
+    namespace: default
+  - action: delete
+    kind: Pod
+    namespace: kube-system
+    labelSelector:
+      app: cleanup
 ```
 
 # Helm Chart Config
@@ -180,16 +189,20 @@ The following are valid configurations for the `loadDockerImages` section:
 
 The `postInstallActions` section allows you to perform actions on Kubernetes resources after the cluster setup is complete. This runs after Helm charts are installed and manifests are applied.
 
-Currently, the only supported action is `restart`, which performs a rollout restart on the specified resources (equivalent to `kubectl rollout restart`).
+Currently supported actions:
+- `restart`: Performs a rollout restart on the specified resources (equivalent to `kubectl rollout restart`)
+- `delete`: Deletes the specified resources (equivalent to `kubectl delete`)
 
 ## Configuration Options
 
-* `action`: The action to perform (*REQUIRED*). Currently only `restart` is supported.
-* `kind`: The kind of Kubernetes resource (*REQUIRED*). Supported kinds: `Deployment`, `StatefulSet`, `DaemonSet`.
+* `action`: The action to perform (*REQUIRED*). Supported values: `restart`, `delete`.
+* `kind`: The kind of Kubernetes resource (*REQUIRED*). 
+  - For `restart`: `Deployment`, `StatefulSet`, `DaemonSet`
+  - For `delete`: `Pod`
 * `namespace`: The namespace where the resource(s) exist (*Optional*). Defaults to `default` if not specified.
-* `name`: The name of the specific resource to restart (*Optional* - either `name` or `labelSelector` must be provided).
+* `name`: The name of the specific resource (*Optional* - either `name` or `labelSelector` must be provided).
 * `labelSelector`: A map of labels to select multiple resources (*Optional* - either `name` or `labelSelector` must be provided).
-* `group`: The API group (*Optional*). Defaults to `apps` for Deployment, StatefulSet, and DaemonSet.
+* `group`: The API group (*Optional*). Defaults to `core` for Pod, `apps` for Deployment/StatefulSet/DaemonSet.
 * `version`: The API version (*Optional*). Defaults to `v1`.
 
 ## Restart by Name
@@ -240,3 +253,38 @@ postInstallActions:
 ```
 
 **Note:** If both `name` and `labelSelector` are provided, `labelSelector` takes precedence and `name` is ignored.
+
+## Delete by Name
+
+To delete a specific Pod by name:
+
+```yaml
+postInstallActions:
+  - action: delete
+    kind: Pod
+    name: foo
+    namespace: bar
+```
+
+This is equivalent to running:
+```bash
+kubectl delete pod/foo -n bar
+```
+
+## Delete by Label Selector
+
+To delete all Pods matching a label selector:
+
+```yaml
+postInstallActions:
+  - action: delete
+    kind: Pod
+    namespace: bazz
+    labelSelector:
+      app.kubernetes.io/instance: bizz
+```
+
+This is equivalent to running:
+```bash
+kubectl delete pod -n bazz -l app.kubernetes.io/instance=bizz
+```

@@ -327,20 +327,27 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 		}
 
 		// Validate action type
-		if action.Action != "restart" {
+		if action.Action != "restart" && action.Action != "delete" {
 			log.Warnf("Skipping unsupported action '%s' for %s/%s", action.Action, action.Kind, action.Name)
 			continue
 		}
 
-		// Validate kind
-		validKinds := map[string]bool{
-			"Deployment":  true,
-			"StatefulSet": true,
-			"DaemonSet":   true,
-		}
-		if !validKinds[action.Kind] {
-			log.Warnf("Skipping unsupported kind '%s' for %s", action.Kind, action.Name)
-			continue
+		// Validate kind based on action
+		if action.Action == "restart" {
+			validKinds := map[string]bool{
+				"Deployment":  true,
+				"StatefulSet": true,
+				"DaemonSet":   true,
+			}
+			if !validKinds[action.Kind] {
+				log.Warnf("Skipping unsupported kind '%s' for restart action", action.Kind)
+				continue
+			}
+		} else if action.Action == "delete" {
+			if action.Kind != "Pod" {
+				log.Warnf("Skipping unsupported kind '%s' for delete action - only Pod is supported", action.Kind)
+				continue
+			}
 		}
 
 		// Set defaults
@@ -363,24 +370,45 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 			group = "apps"
 		}
 
-		// Execute the restart action
-		// LabelSelector takes precedence over Name
-		if len(action.LabelSelector) > 0 {
-			// Restart by label selector
-			log.Infof("Restarting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
-			if err := restartResourcesByLabel(ctx, cfg, group, version, action.Kind, namespace, action.LabelSelector); err != nil {
-				log.Warnf("Failed to restart %s(s) by label: %v", action.Kind, err)
-				continue
+		// Execute the action based on type
+		if action.Action == "restart" {
+			// LabelSelector takes precedence over Name
+			if len(action.LabelSelector) > 0 {
+				// Restart by label selector
+				log.Infof("Restarting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
+				if err := restartResourcesByLabel(ctx, cfg, group, version, action.Kind, namespace, action.LabelSelector); err != nil {
+					log.Warnf("Failed to restart %s(s) by label: %v", action.Kind, err)
+					continue
+				}
+				log.Infof("Successfully restarted %s(s) by label selector", action.Kind)
+			} else {
+				// Restart by name
+				log.Infof("Restarting %s/%s in namespace %s", action.Kind, action.Name, namespace)
+				if err := restartResource(ctx, cfg, group, version, action.Kind, action.Name, namespace); err != nil {
+					log.Warnf("Failed to restart %s/%s: %v", action.Kind, action.Name, err)
+					continue
+				}
+				log.Infof("Successfully restarted %s/%s", action.Kind, action.Name)
 			}
-			log.Infof("Successfully restarted %s(s) by label selector", action.Kind)
-		} else {
-			// Restart by name
-			log.Infof("Restarting %s/%s in namespace %s", action.Kind, action.Name, namespace)
-			if err := restartResource(ctx, cfg, group, version, action.Kind, action.Name, namespace); err != nil {
-				log.Warnf("Failed to restart %s/%s: %v", action.Kind, action.Name, err)
-				continue
+		} else if action.Action == "delete" {
+			// LabelSelector takes precedence over Name
+			if len(action.LabelSelector) > 0 {
+				// Delete by label selector
+				log.Infof("Deleting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
+				if err := deleteResourcesByLabel(ctx, cfg, group, version, action.Kind, namespace, action.LabelSelector); err != nil {
+					log.Warnf("Failed to delete %s(s) by label: %v", action.Kind, err)
+					continue
+				}
+				log.Infof("Successfully deleted %s(s) by label selector", action.Kind)
+			} else {
+				// Delete by name
+				log.Infof("Deleting %s/%s in namespace %s", action.Kind, action.Name, namespace)
+				if err := deleteResource(ctx, cfg, group, version, action.Kind, action.Name, namespace); err != nil {
+					log.Warnf("Failed to delete %s/%s: %v", action.Kind, action.Name, err)
+					continue
+				}
+				log.Infof("Successfully deleted %s/%s", action.Kind, action.Name)
 			}
-			log.Infof("Successfully restarted %s/%s", action.Kind, action.Name)
 		}
 	}
 
@@ -430,7 +458,7 @@ func restartResource(ctx context.Context, cfg *rest.Config, group, version, kind
 		annotations = make(map[string]string)
 	}
 	annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
-	
+
 	if err := unstructured.SetNestedStringMap(obj.Object, annotations, "spec", "template", "metadata", "annotations"); err != nil {
 		return err
 	}
@@ -497,7 +525,7 @@ func restartResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versi
 	for _, obj := range list.Items {
 		resourceName := obj.GetName()
 		log.Infof("Restarting %s/%s in namespace %s", kind, resourceName, namespace)
-		
+
 		// Add or update the restart annotation on the pod template spec
 		annotations, found, err := unstructured.NestedStringMap(obj.Object, "spec", "template", "metadata", "annotations")
 		if err != nil {
@@ -508,7 +536,7 @@ func restartResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versi
 			annotations = make(map[string]string)
 		}
 		annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
-		
+
 		if err := unstructured.SetNestedStringMap(obj.Object, annotations, "spec", "template", "metadata", "annotations"); err != nil {
 			log.Warnf("Failed to set annotations for %s/%s: %v", kind, resourceName, err)
 			continue
@@ -521,6 +549,99 @@ func restartResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versi
 			continue
 		}
 		log.Infof("Successfully restarted %s/%s", kind, resourceName)
+	}
+
+	return nil
+}
+
+// deleteResource deletes a Kubernetes resource by name
+func deleteResource(ctx context.Context, cfg *rest.Config, group, version, kind, name, namespace string) error {
+	// Create dynamic client
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Build the GVR (GroupVersionResource)
+	var resource string
+	switch kind {
+	case "Pod":
+		resource = "pods"
+	default:
+		return errors.New("unsupported kind for delete: " + kind)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	// Delete the resource
+	err = dyn.Resource(gvr).Namespace(namespace).Delete(ctx, name, v1.DeleteOptions{})
+	return err
+}
+
+// deleteResourcesByLabel deletes multiple Kubernetes resources matching a label selector
+func deleteResourcesByLabel(ctx context.Context, cfg *rest.Config, group, version, kind, namespace string, labelSelector map[string]string) error {
+	// Create dynamic client
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Build the GVR (GroupVersionResource)
+	var resource string
+	switch kind {
+	case "Pod":
+		resource = "pods"
+	default:
+		return errors.New("unsupported kind for delete: " + kind)
+	}
+
+	gvr := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	// Convert label selector map to string format (key1=value1,key2=value2)
+	var labelPairs []string
+	for k, v := range labelSelector {
+		labelPairs = append(labelPairs, k+"="+v)
+	}
+	labelSelectorString := ""
+	for i, pair := range labelPairs {
+		if i > 0 {
+			labelSelectorString += ","
+		}
+		labelSelectorString += pair
+	}
+
+	// List resources matching the label selector
+	list, err := dyn.Resource(gvr).Namespace(namespace).List(ctx, v1.ListOptions{
+		LabelSelector: labelSelectorString,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(list.Items) == 0 {
+		log.Warnf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
+		return nil
+	}
+
+	// Delete each matching resource
+	for _, obj := range list.Items {
+		resourceName := obj.GetName()
+		log.Infof("Deleting %s/%s in namespace %s", kind, resourceName, namespace)
+
+		err = dyn.Resource(gvr).Namespace(namespace).Delete(ctx, resourceName, v1.DeleteOptions{})
+		if err != nil {
+			log.Warnf("Failed to delete %s/%s: %v", kind, resourceName, err)
+			continue
+		}
+		log.Infof("Successfully deleted %s/%s", kind, resourceName)
 	}
 
 	return nil

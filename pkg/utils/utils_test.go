@@ -462,7 +462,7 @@ func TestPostInstallActions(t *testing.T) {
 			name: "unsupported action",
 			actions: []PostInstallAction{
 				{
-					Action: "delete",
+					Action: "update",
 					Kind:   "Deployment",
 					Name:   "test",
 				},
@@ -470,11 +470,22 @@ func TestPostInstallActions(t *testing.T) {
 			expectError: false, // Should warn and skip
 		},
 		{
-			name: "unsupported kind",
+			name: "unsupported kind for restart",
 			actions: []PostInstallAction{
 				{
 					Action: "restart",
 					Kind:   "Pod",
+					Name:   "test",
+				},
+			},
+			expectError: false, // Should warn and skip
+		},
+		{
+			name: "unsupported kind for delete",
+			actions: []PostInstallAction{
+				{
+					Action: "delete",
+					Kind:   "Deployment",
 					Name:   "test",
 				},
 			},
