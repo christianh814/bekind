@@ -37,8 +37,8 @@ BeKind is a powerful CLI tool that simplifies the process of creating and config
 # Start a cluster with the default configuration
 bekind start
 
-# Start a cluster with a custom profile
-bekind start --profile argocd
+# Run a saved profile
+bekind run argocd
 
 # List all running clusters
 bekind list
@@ -63,14 +63,30 @@ Whether you're developing applications, testing Kubernetes features, or creating
 
 ---
 
+## Documentation
+
+### Getting Started
+- [Installation]({% link installation.md %}) - Install BeKind and prerequisites
+- [CLI Commands]({% link cli-commands.md %}) - Complete command reference
+- [Configuration]({% link configuration.md %}) - Configure your clusters
+
+### Features
+- [Helm Charts]({% link features/helm-charts.md %}) - Automatically install Helm charts
+- [Loading Images]({% link features/loading-images.md %}) - Pre-load Docker images
+- [Post Install Manifests]({% link features/post-install-manifests.md %}) - Apply Kubernetes manifests
+- [Post Install Actions]({% link features/post-install-actions.md %}) - Automate resource operations
+
+---
+
 ## Getting Help
 
 If you have questions or run into issues:
 
-- Check out the [Configuration Guide]({% link configuration.md %})
-- Review the [Features Documentation]({% link features/index.md %})
+- Check out the [CLI Commands]({% link cli-commands.md %}) reference
+- Review the [Configuration Guide]({% link configuration.md %})
+- Explore the [Features Documentation]({% link features/index.md %})
 - Open an issue on [GitHub](https://github.com/christianh814/bekind/issues)
 
 ## License
 
-BeKind is available as open source under the terms of the [MIT License](https://github.com/christianh814/bekind/blob/main/LICENSE).
+BeKind is available as open source under the terms of the [Apache License 2.0](https://github.com/christianh814/bekind/blob/main/LICENSE).

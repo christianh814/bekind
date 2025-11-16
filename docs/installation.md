@@ -110,6 +110,7 @@ bekind --help
 
 Now that BeKind is installed, you can:
 
-1. [Learn about configuration options]({% link configuration.md %})
-2. [Explore features]({% link features/index.md %})
-3. Start your first cluster with `bekind start`
+1. [Review CLI commands]({% link cli-commands.md %}) - Learn all available commands
+2. [Learn about configuration options]({% link configuration.md %}) - Customize your clusters
+3. [Explore features]({% link features/index.md %}) - Discover what BeKind can do
+4. Start your first cluster with `bekind start`
