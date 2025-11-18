@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Installation
-nav_order: 2
+nav_order: 3
 description: "How to install BeKind"
 ---
 
@@ -19,18 +19,6 @@ description: "How to install BeKind"
 ## Prerequisites
 
 Before installing BeKind, ensure you have the following installed:
-
-### Go
-
-BeKind requires Go version `1.20` or newer.
-
-To check your Go version:
-
-```bash
-go version
-```
-
-If you need to install or update Go, visit the [official Go downloads page](https://golang.org/dl/).
 
 ### Docker
 
@@ -60,31 +48,30 @@ docker ps
 
 ## Installing BeKind
 
-### Using Go Install
+### Download from Releases Page
 
-The easiest way to install BeKind is using `go install`:
+1. Visit the [BeKind Releases page](https://github.com/christianh814/bekind/releases)
 
+2. Download the latest release for your platform:
+   - **Linux (AMD64)**: `bekind-linux-amd64`
+   - **macOS (ARM64/Apple Silicon)**: `bekind-darwin-arm64`
+
+3. Make the binary executable and move it to your PATH:
+
+**Linux:**
 ```bash
-go install github.com/christianh814/bekind@latest
+chmod +x bekind-linux-amd64
+sudo mv bekind-linux-amd64 /usr/local/bin/bekind
 ```
 
-This will download and compile BeKind, placing the binary in your `$GOBIN` directory (typically `$GOPATH/bin` or `$HOME/go/bin`).
-
-### Moving to Your PATH
-
-After installation, move the binary to a directory in your `$PATH` for easy access. For example, to move it to `/usr/local/bin`:
-
+**macOS:**
 ```bash
-sudo mv $GOBIN/bekind /usr/local/bin/bekind
-sudo chmod +x /usr/local/bin/bekind
+chmod +x bekind-darwin-arm64
+sudo mv bekind-darwin-arm64 /usr/local/bin/bekind
 ```
 
-Alternatively, you can add `$GOBIN` to your `$PATH`:
-
-```bash
-# Add to your .bashrc, .zshrc, or equivalent
-export PATH="$PATH:$(go env GOBIN)"
-```
+{: .note }
+On macOS, you may need to allow the binary to run by going to System Preferences → Security & Privacy if you see a security warning on first run.
 
 ---
 

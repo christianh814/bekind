@@ -12,7 +12,7 @@ permalink: /
 Install a K8S cluster using [KIND](https://github.com/kubernetes-sigs/kind), and perform automated post-deployment steps.
 {: .fs-6 .fw-300 }
 
-[Get started now]({% link installation.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Quick Start]({% link quickstart.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View it on GitHub](https://github.com/christianh814/bekind){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
@@ -66,6 +66,7 @@ Whether you're developing applications, testing Kubernetes features, or creating
 ## Documentation
 
 ### Getting Started
+- [Quick Start]({% link quickstart.md %}) - Get up and running in minutes
 - [Installation]({% link installation.md %}) - Install BeKind and prerequisites
 - [CLI Commands]({% link cli-commands.md %}) - Complete command reference
 - [Configuration]({% link configuration.md %}) - Configure your clusters
