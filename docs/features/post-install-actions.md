@@ -26,7 +26,7 @@ Post-install actions allow you to perform automated operations on Kubernetes res
 - Forcing rollouts to pick up new configurations
 - Removing debug resources
 
-Actions run **after** Helm charts are installed and manifests are applied.
+Actions run **after** Helm charts are installed, manifests are applied, and patches are applied.
 
 ---
 
@@ -364,7 +364,10 @@ postInstallActions:
 2. Docker images are loaded (if configured)
 3. Helm charts are installed (if configured)
 4. Post-install manifests are applied (if configured)
-5. **Post-install actions are performed** ← You are here
+5. Post-install patches are applied (if configured)
+6. **Post-install actions are performed** ← You are here
+
+This order allows you to patch resources first, then trigger actions like restarts to pick up the patched configurations.
 
 ---
 

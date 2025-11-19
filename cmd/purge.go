@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/christianh814/bekind/pkg/kind"
 	"github.com/spf13/cobra"
@@ -35,7 +36,8 @@ all running KIND clusters.`,
 		// Get the value from the CLI
 		confirm, err := cmd.Flags().GetBool("confirm")
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 
 		if confirm {
@@ -50,7 +52,7 @@ all running KIND clusters.`,
 			if ans == "y" || ans == "Y" {
 				purge()
 			} else {
-				log.Info("Exiting")
+				log.Debug("User cancelled purge operation")
 			}
 
 		}
@@ -64,9 +66,10 @@ func init() {
 }
 
 func purge() {
-	log.Info("Deleting all KIND clusters on the system")
+	log.Info("Deleting all KIND clusters")
 	err := kind.DeleteAllKindClusters("")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		os.Exit(1)
 	}
 }

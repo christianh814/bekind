@@ -23,6 +23,97 @@ BeKind can automatically install Helm charts during cluster creation, making it 
 
 ---
 
+## Helm Stacks
+
+{: .highlight }
+**New in v0.6.0**: Organize and reuse Helm charts with stack configurations.
+
+Helm Stacks allow you to organize related Helm charts into reusable configuration files. This is ideal for managing complex deployments with multiple interdependent charts.
+
+### Creating a Stack
+
+Stacks are stored in `~/.bekind/helmstack/<stack-name>/stack.yaml`:
+
+```
+~/.bekind/
+└── helmstack/
+    ├── argocd-cilium/
+    │   └── stack.yaml
+    ├── monitoring/
+    │   └── stack.yaml
+    └── database/
+        └── stack.yaml
+```
+
+### Stack File Format
+
+Each `stack.yaml` file contains a `helmCharts` array with the same format as inline chart definitions:
+
+```yaml
+helmCharts:
+  - url: "https://helm.cilium.io"
+    repo: "cilium"
+    chart: "cilium"
+    release: "cilium"
+    namespace: "kube-system"
+    wait: true
+    valuesObject:
+      kubeProxyReplacement: true
+      operator:
+        replicas: 1
+      ingressController:
+        enabled: true
+  - url: "https://argoproj.github.io/argo-helm"
+    repo: "argo"
+    chart: "argo-cd"
+    release: "argocd"
+    namespace: "argocd"
+    wait: true
+    valuesObject:
+      global:
+        domain: argocd.example.com
+```
+
+### Using Stacks
+
+Reference stacks in your BeKind configuration using the `helmStack` key:
+
+```yaml
+domain: "7f000001.nip.io"
+helmStack:
+  - name: argocd-cilium
+  - name: monitoring
+helmCharts:
+  - url: "https://argoproj.github.io/argo-helm"
+    repo: "argo"
+    chart: "argo-rollouts"
+    release: "argo-rollouts"
+    namespace: "argo-rollouts"
+    wait: true
+kindConfig: |
+  kind: Cluster
+  name: my-cluster
+  apiVersion: kind.x-k8s.io/v1alpha4
+```
+
+### Installation Order
+
+Charts are installed in this order:
+
+1. **Stack charts** (in the order stacks are listed)
+2. **Inline charts** (from the `helmCharts` section)
+
+Within each stack, charts are installed in the order they appear in the `stack.yaml` file.
+
+### Benefits of Stacks
+
+- **Reusability**: Share common chart configurations across multiple clusters
+- **Organization**: Keep related charts together in logical groups
+- **Maintainability**: Update stack definitions once, apply to many clusters
+- **Modularity**: Mix and match stacks with inline charts as needed
+
+---
+
 ## Configuration
 
 Add Helm charts to your BeKind configuration under the `helmCharts` key:

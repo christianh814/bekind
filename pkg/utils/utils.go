@@ -313,22 +313,22 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 	for _, action := range actions {
 		// Validate required fields
 		if action.Action == "" {
-			log.Warn("Skipping action with empty 'action' field")
+			log.Debug("Skipping action with empty 'action' field")
 			continue
 		}
 		if action.Kind == "" {
-			log.Warn("Skipping action with empty 'kind' field")
+			log.Debug("Skipping action with empty 'kind' field")
 			continue
 		}
 		// Either name or labelSelector must be provided
 		if action.Name == "" && len(action.LabelSelector) == 0 {
-			log.Warn("Skipping action with empty 'name' and 'labelSelector' fields - at least one is required")
+			log.Debug("Skipping action with empty 'name' and 'labelSelector' fields - at least one is required")
 			continue
 		}
 
 		// Validate action type
 		if action.Action != "restart" && action.Action != "delete" {
-			log.Warnf("Skipping unsupported action '%s' for %s/%s", action.Action, action.Kind, action.Name)
+			log.Debugf("Skipping unsupported action '%s' for %s/%s", action.Action, action.Kind, action.Name)
 			continue
 		}
 
@@ -340,12 +340,12 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 				"DaemonSet":   true,
 			}
 			if !validKinds[action.Kind] {
-				log.Warnf("Skipping unsupported kind '%s' for restart action", action.Kind)
+				log.Debugf("Skipping unsupported kind '%s' for restart action", action.Kind)
 				continue
 			}
 		} else if action.Action == "delete" {
 			if action.Kind != "Pod" {
-				log.Warnf("Skipping unsupported kind '%s' for delete action - only Pod is supported", action.Kind)
+				log.Debugf("Skipping unsupported kind '%s' for delete action - only Pod is supported", action.Kind)
 				continue
 			}
 		}
@@ -378,39 +378,39 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 			// LabelSelector takes precedence over Name
 			if len(action.LabelSelector) > 0 {
 				// Restart by label selector
-				log.Infof("Restarting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
+				log.Debugf("Restarting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
 				if err := restartResourcesByLabel(ctx, cfg, group, version, action.Kind, namespace, action.LabelSelector); err != nil {
 					log.Warnf("Failed to restart %s(s) by label: %v", action.Kind, err)
 					continue
 				}
-				log.Infof("Successfully restarted %s(s) by label selector", action.Kind)
+				log.Debugf("Successfully restarted %s(s) by label selector", action.Kind)
 			} else {
 				// Restart by name
-				log.Infof("Restarting %s/%s in namespace %s", action.Kind, action.Name, namespace)
+				log.Debugf("Restarting %s/%s in namespace %s", action.Kind, action.Name, namespace)
 				if err := restartResource(ctx, cfg, group, version, action.Kind, action.Name, namespace); err != nil {
 					log.Warnf("Failed to restart %s/%s: %v", action.Kind, action.Name, err)
 					continue
 				}
-				log.Infof("Successfully restarted %s/%s", action.Kind, action.Name)
+				log.Debugf("Successfully restarted %s/%s", action.Kind, action.Name)
 			}
 		} else if action.Action == "delete" {
 			// LabelSelector takes precedence over Name
 			if len(action.LabelSelector) > 0 {
 				// Delete by label selector
-				log.Infof("Deleting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
+				log.Debugf("Deleting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
 				if err := deleteResourcesByLabel(ctx, cfg, group, version, action.Kind, namespace, action.LabelSelector); err != nil {
 					log.Warnf("Failed to delete %s(s) by label: %v", action.Kind, err)
 					continue
 				}
-				log.Infof("Successfully deleted %s(s) by label selector", action.Kind)
+				log.Debugf("Successfully deleted %s(s) by label selector", action.Kind)
 			} else {
 				// Delete by name
-				log.Infof("Deleting %s/%s in namespace %s", action.Kind, action.Name, namespace)
+				log.Debugf("Deleting %s/%s in namespace %s", action.Kind, action.Name, namespace)
 				if err := deleteResource(ctx, cfg, group, version, action.Kind, action.Name, namespace); err != nil {
 					log.Warnf("Failed to delete %s/%s: %v", action.Kind, action.Name, err)
 					continue
 				}
-				log.Infof("Successfully deleted %s/%s", action.Kind, action.Name)
+				log.Debugf("Successfully deleted %s/%s", action.Kind, action.Name)
 			}
 		}
 	}
@@ -520,14 +520,14 @@ func restartResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versi
 	}
 
 	if len(list.Items) == 0 {
-		log.Warnf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
+		log.Debugf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
 		return nil
 	}
 
 	// Restart each matching resource
 	for _, obj := range list.Items {
 		resourceName := obj.GetName()
-		log.Infof("Restarting %s/%s in namespace %s", kind, resourceName, namespace)
+		log.Debugf("Restarting %s/%s in namespace %s", kind, resourceName, namespace)
 
 		// Add or update the restart annotation on the pod template spec
 		annotations, found, err := unstructured.NestedStringMap(obj.Object, "spec", "template", "metadata", "annotations")
@@ -551,7 +551,7 @@ func restartResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versi
 			log.Warnf("Failed to update %s/%s: %v", kind, resourceName, err)
 			continue
 		}
-		log.Infof("Successfully restarted %s/%s", kind, resourceName)
+		log.Debugf("Successfully restarted %s/%s", kind, resourceName)
 	}
 
 	return nil
@@ -630,21 +630,158 @@ func deleteResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versio
 	}
 
 	if len(list.Items) == 0 {
-		log.Warnf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
+		log.Debugf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
 		return nil
 	}
 
 	// Delete each matching resource
 	for _, obj := range list.Items {
 		resourceName := obj.GetName()
-		log.Infof("Deleting %s/%s in namespace %s", kind, resourceName, namespace)
+		log.Debugf("Deleting %s/%s in namespace %s", kind, resourceName, namespace)
 
 		err = dyn.Resource(gvr).Namespace(namespace).Delete(ctx, resourceName, v1.DeleteOptions{})
 		if err != nil {
 			log.Warnf("Failed to delete %s/%s: %v", kind, resourceName, err)
 			continue
 		}
-		log.Infof("Successfully deleted %s/%s", kind, resourceName)
+		log.Debugf("Successfully deleted %s/%s", kind, resourceName)
+	}
+
+	return nil
+}
+
+// PatchTarget represents the target resource for a patch operation
+type PatchTarget struct {
+	Group     string `mapstructure:"group"`
+	Version   string `mapstructure:"version"`
+	Kind      string `mapstructure:"kind"`
+	Name      string `mapstructure:"name"`
+	Namespace string `mapstructure:"namespace"`
+}
+
+// PostInstallPatch represents a JSON Patch to be applied to a Kubernetes resource
+type PostInstallPatch struct {
+	Target PatchTarget `mapstructure:"target"`
+	Patch  string      `mapstructure:"patch"`
+}
+
+// convertYAMLtoJSONCompatible converts map[interface{}]interface{} to map[string]interface{}
+// which is needed for JSON marshaling
+func convertYAMLtoJSONCompatible(i interface{}) interface{} {
+	switch x := i.(type) {
+	case map[interface{}]interface{}:
+		m2 := map[string]interface{}{}
+		for k, v := range x {
+			m2[k.(string)] = convertYAMLtoJSONCompatible(v)
+		}
+		return m2
+	case []interface{}:
+		for i, v := range x {
+			x[i] = convertYAMLtoJSONCompatible(v)
+		}
+	}
+	return i
+}
+
+// PostInstallPatches applies JSON patches to Kubernetes resources
+func PostInstallPatches(patches []PostInstallPatch, ctx context.Context, cfg *rest.Config) error {
+	// Create dynamic client
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Create discovery client for GVR mapping
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+
+	// Process each patch
+	for _, patch := range patches {
+		// Validate required fields
+		if patch.Target.Version == "" {
+			log.Debug("Skipping patch with empty 'version' field")
+			continue
+		}
+		if patch.Target.Kind == "" {
+			log.Debug("Skipping patch with empty 'kind' field")
+			continue
+		}
+		if patch.Target.Name == "" {
+			log.Debug("Skipping patch with empty 'name' field")
+			continue
+		}
+		if patch.Patch == "" {
+			log.Debug("Skipping patch with empty 'patch' field")
+			continue
+		}
+
+		// Set defaults
+		group := patch.Target.Group
+		if group == "" {
+			group = "" // Core API group is empty string
+		}
+		namespace := patch.Target.Namespace
+		if namespace == "" {
+			namespace = "default"
+		}
+
+		// Map Kind to GVR
+		gvk := schema.GroupVersionKind{
+			Group:   group,
+			Version: patch.Target.Version,
+			Kind:    patch.Target.Kind,
+		}
+
+		mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			log.Warnf("Failed to get REST mapping for %s: %v", gvk.String(), err)
+			continue
+		}
+
+		gvr := mapping.Resource
+
+		// Log the patch operation
+		log.Debugf("Applying patch to %s/%s in namespace %s", patch.Target.Kind, patch.Target.Name, namespace)
+
+		// Convert YAML to JSON if needed
+		var patchBytes []byte
+		// Try to unmarshal as YAML first (which also handles JSON)
+		var patchData interface{}
+		err = goyaml.Unmarshal([]byte(patch.Patch), &patchData)
+		if err != nil {
+			log.Warnf("Failed to parse patch for %s/%s: %v", patch.Target.Kind, patch.Target.Name, err)
+			continue
+		}
+
+		// Convert YAML map types to JSON-compatible types
+		patchData = convertYAMLtoJSONCompatible(patchData)
+
+		// Convert to JSON
+		patchBytes, err = json.Marshal(patchData)
+		if err != nil {
+			log.Warnf("Failed to convert patch to JSON for %s/%s: %v", patch.Target.Kind, patch.Target.Name, err)
+			continue
+		}
+
+		// Apply the patch
+		var resource dynamic.ResourceInterface
+		if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+			resource = dyn.Resource(gvr).Namespace(namespace)
+		} else {
+			resource = dyn.Resource(gvr)
+		}
+
+		_, err = resource.Patch(ctx, patch.Target.Name, types.JSONPatchType, patchBytes, v1.PatchOptions{})
+		if err != nil {
+			log.Warnf("Failed to patch %s/%s: %v", patch.Target.Kind, patch.Target.Name, err)
+			continue
+		}
+
+		log.Debugf("Successfully patched %s/%s", patch.Target.Kind, patch.Target.Name)
 	}
 
 	return nil

@@ -60,6 +60,17 @@ postInstallActions:
     kind: Deployment
     name: my-deployment
     namespace: default
+postInstallPatches:
+  - target:
+      group: gateway.networking.k8s.io
+      version: v1
+      kind: GRPCRoute
+      name: argocd-server-grpc
+      namespace: argocd
+    patch: |
+      - op: replace
+        path: /spec/rules/0/backendRefs/0/port
+        value: 443
 ```
 
 ---
@@ -127,6 +138,30 @@ kindConfig: |
 
 {: .warning }
 **"Garbage in/garbage out"** - BeKind passes this configuration directly to KIND without validation. Errors will come from KIND or the Kubernetes API.
+
+---
+
+### helmStack
+
+**Type**: `array`  
+**Optional**: Yes  
+**Description**: List of Helm stack names to load and install. Each stack references a `stack.yaml` file in `~/.bekind/helmstack/<stack-name>/`.
+
+Stacks are processed before inline `helmCharts` and allow you to organize and reuse Helm chart configurations across multiple clusters.
+
+See the [Helm Charts feature documentation]({% link features/helm-charts.md %}) for detailed information about Helm Stacks.
+
+**Example**:
+
+```yaml
+helmStack:
+  - name: argocd-cilium
+  - name: monitoring
+```
+
+This would load charts from:
+- `~/.bekind/helmstack/argocd-cilium/stack.yaml`
+- `~/.bekind/helmstack/monitoring/stack.yaml`
 
 ---
 
@@ -217,6 +252,42 @@ postInstallActions:
     namespace: default
     labelSelector:
       app: cleanup
+```
+
+---
+
+### postInstallPatches
+
+**Type**: `array`  
+**Optional**: Yes  
+**Description**: JSON patches to apply to Kubernetes resources after installation. Provides Kustomize-like patching capabilities.
+
+See the [Post Install Patches feature documentation]({% link features/post-install-patches.md %}) for detailed information.
+
+**Example**:
+
+```yaml
+postInstallPatches:
+  - target:
+      group: gateway.networking.k8s.io
+      version: v1
+      kind: GRPCRoute
+      name: argocd-server-grpc
+      namespace: argocd
+    patch: |
+      - op: replace
+        path: /spec/rules/0/backendRefs/0/port
+        value: 443
+  - target:
+      version: v1
+      kind: Service
+      name: my-service
+      # namespace defaults to "default"
+      # group defaults to "" (core)
+    patch: |
+      - op: add
+        path: /metadata/labels/app
+        value: my-app
 ```
 
 ---

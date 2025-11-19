@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/christianh814/bekind/pkg/kind"
 	log "github.com/sirupsen/logrus"
@@ -33,7 +34,8 @@ var listCmd = &cobra.Command{
 		// Get a list of KIND clusters
 		clusters, err := kind.ListKindClusters()
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 
 		// Check to see if there are any clusters

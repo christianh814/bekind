@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"bytes"
+	"os"
 
 	"github.com/christianh814/bekind/pkg/kind"
 	log "github.com/sirupsen/logrus"
@@ -36,13 +37,15 @@ if one isn't named.`,
 		// Get clulster name from CLI
 		clusterName, err := cmd.Flags().GetString("name")
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 
 		// Set the kindConfig as the config file for Viper
 		kindConfig := viper.GetString("kindConfig")
 		if len(kindConfig) == 0 {
-			log.Fatal("Could not find kindConfig")
+			log.Error("Could not find kindConfig")
+			os.Exit(1)
 		}
 		viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig)))
 
@@ -55,9 +58,10 @@ if one isn't named.`,
 		viper.SetConfigFile(cfgFile)
 		viper.ReadInConfig()
 
-		log.Info("Destroying KIND cluster: ", clusterName)
+		log.Infof("Destroying KIND cluster: %s", clusterName)
 		if err := kind.DeleteKindCluster(clusterName, ""); err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 	},
 }
