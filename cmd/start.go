@@ -144,6 +144,7 @@ on the configuration file that is passed`,
 			if err := viper.UnmarshalKey("postInstallActions", &postInstallActions); err != nil {
 				log.Warn("Issue parsing postInstallActions: ", err)
 			}
+			log.Debug("Loaded postInstallActions configuration")
 		}
 
 		// Get post install patches if any
@@ -152,15 +153,18 @@ on the configuration file that is passed`,
 			if err := viper.UnmarshalKey("postInstallPatches", &postInstallPatches); err != nil {
 				log.Warn("Issue parsing postInstallPatches: ", err)
 			}
+			log.Debug("Loaded postInstallPatches configuration")
 		}
 
 		// Set the kindConfig as the config file for Viper
 		kindConfig := viper.GetString("kindConfig")
 		if len(kindConfig) == 0 {
-			log.Fatal("Could not find kindConfig")
+			log.Error("Could not find kindConfig")
+			os.Exit(1)
 		}
 		if err := viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig))); err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 
 		// Check to see if workers are being used. This is used to label the workers as such. This is based on inspecting the kindConfig
@@ -359,38 +363,40 @@ on the configuration file that is passed`,
 		// Set up a restconfig
 		rc, err := utils.GetRestConfig("")
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 
 		// Load manifests into the cluster (if any)
 		if len(postInstallManifests) != 0 {
-			log.Info("Post Deployment Manifests")
+			log.Info("Applying post-install manifests")
 			if err := utils.PostInstallManifests(postInstallManifests, context.TODO(), rc); err != nil {
-				log.Warn("Issue with Post Install Manifests: ", err)
+				log.Warn("Issue with post-install manifests: ", err)
 			}
 		}
 
 		// Apply post install patches (if any)
 		if len(postInstallPatches) != 0 {
-			log.Info("Post Install Patches")
+			log.Info("Applying post-install patches")
 			if err := utils.PostInstallPatches(postInstallPatches, context.TODO(), rc); err != nil {
-				log.Warn("Issue with Post Install Patches: ", err)
+				log.Warn("Issue with post-install patches: ", err)
 			}
 		}
 
 		// Execute post install actions (if any)
 		if len(postInstallActions) != 0 {
-			log.Info("Post Install Actions")
+			log.Info("Executing post-install actions")
 			if err := utils.PostInstallActions(postInstallActions, context.TODO(), rc); err != nil {
-				log.Warn("Issue with Post Install Actions: ", err)
+				log.Warn("Issue with post-install actions: ", err)
 			}
 		}
 
 		// Save the bekind config to a secret
-		log.Info("Saving bekind config to a secret in \"kube-public\"")
+		log.Debug("Saving bekind config to secret in kube-public namespace")
 		err = utils.SaveBeKindConfig(rc, context.TODO(), "kube-public", "bekind-config")
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 
 		// Display Argo CD URL and password if it exists

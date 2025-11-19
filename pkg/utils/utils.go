@@ -313,22 +313,22 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 	for _, action := range actions {
 		// Validate required fields
 		if action.Action == "" {
-			log.Warn("Skipping action with empty 'action' field")
+			log.Debug("Skipping action with empty 'action' field")
 			continue
 		}
 		if action.Kind == "" {
-			log.Warn("Skipping action with empty 'kind' field")
+			log.Debug("Skipping action with empty 'kind' field")
 			continue
 		}
 		// Either name or labelSelector must be provided
 		if action.Name == "" && len(action.LabelSelector) == 0 {
-			log.Warn("Skipping action with empty 'name' and 'labelSelector' fields - at least one is required")
+			log.Debug("Skipping action with empty 'name' and 'labelSelector' fields - at least one is required")
 			continue
 		}
 
 		// Validate action type
 		if action.Action != "restart" && action.Action != "delete" {
-			log.Warnf("Skipping unsupported action '%s' for %s/%s", action.Action, action.Kind, action.Name)
+			log.Debugf("Skipping unsupported action '%s' for %s/%s", action.Action, action.Kind, action.Name)
 			continue
 		}
 
@@ -340,12 +340,12 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 				"DaemonSet":   true,
 			}
 			if !validKinds[action.Kind] {
-				log.Warnf("Skipping unsupported kind '%s' for restart action", action.Kind)
+				log.Debugf("Skipping unsupported kind '%s' for restart action", action.Kind)
 				continue
 			}
 		} else if action.Action == "delete" {
 			if action.Kind != "Pod" {
-				log.Warnf("Skipping unsupported kind '%s' for delete action - only Pod is supported", action.Kind)
+				log.Debugf("Skipping unsupported kind '%s' for delete action - only Pod is supported", action.Kind)
 				continue
 			}
 		}
@@ -378,39 +378,39 @@ func PostInstallActions(actions []PostInstallAction, ctx context.Context, cfg *r
 			// LabelSelector takes precedence over Name
 			if len(action.LabelSelector) > 0 {
 				// Restart by label selector
-				log.Infof("Restarting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
+				log.Debugf("Restarting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
 				if err := restartResourcesByLabel(ctx, cfg, group, version, action.Kind, namespace, action.LabelSelector); err != nil {
 					log.Warnf("Failed to restart %s(s) by label: %v", action.Kind, err)
 					continue
 				}
-				log.Infof("Successfully restarted %s(s) by label selector", action.Kind)
+				log.Debugf("Successfully restarted %s(s) by label selector", action.Kind)
 			} else {
 				// Restart by name
-				log.Infof("Restarting %s/%s in namespace %s", action.Kind, action.Name, namespace)
+				log.Debugf("Restarting %s/%s in namespace %s", action.Kind, action.Name, namespace)
 				if err := restartResource(ctx, cfg, group, version, action.Kind, action.Name, namespace); err != nil {
 					log.Warnf("Failed to restart %s/%s: %v", action.Kind, action.Name, err)
 					continue
 				}
-				log.Infof("Successfully restarted %s/%s", action.Kind, action.Name)
+				log.Debugf("Successfully restarted %s/%s", action.Kind, action.Name)
 			}
 		} else if action.Action == "delete" {
 			// LabelSelector takes precedence over Name
 			if len(action.LabelSelector) > 0 {
 				// Delete by label selector
-				log.Infof("Deleting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
+				log.Debugf("Deleting %s(s) with labels %v in namespace %s", action.Kind, action.LabelSelector, namespace)
 				if err := deleteResourcesByLabel(ctx, cfg, group, version, action.Kind, namespace, action.LabelSelector); err != nil {
 					log.Warnf("Failed to delete %s(s) by label: %v", action.Kind, err)
 					continue
 				}
-				log.Infof("Successfully deleted %s(s) by label selector", action.Kind)
+				log.Debugf("Successfully deleted %s(s) by label selector", action.Kind)
 			} else {
 				// Delete by name
-				log.Infof("Deleting %s/%s in namespace %s", action.Kind, action.Name, namespace)
+				log.Debugf("Deleting %s/%s in namespace %s", action.Kind, action.Name, namespace)
 				if err := deleteResource(ctx, cfg, group, version, action.Kind, action.Name, namespace); err != nil {
 					log.Warnf("Failed to delete %s/%s: %v", action.Kind, action.Name, err)
 					continue
 				}
-				log.Infof("Successfully deleted %s/%s", action.Kind, action.Name)
+				log.Debugf("Successfully deleted %s/%s", action.Kind, action.Name)
 			}
 		}
 	}
@@ -520,14 +520,14 @@ func restartResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versi
 	}
 
 	if len(list.Items) == 0 {
-		log.Warnf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
+		log.Debugf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
 		return nil
 	}
 
 	// Restart each matching resource
 	for _, obj := range list.Items {
 		resourceName := obj.GetName()
-		log.Infof("Restarting %s/%s in namespace %s", kind, resourceName, namespace)
+		log.Debugf("Restarting %s/%s in namespace %s", kind, resourceName, namespace)
 
 		// Add or update the restart annotation on the pod template spec
 		annotations, found, err := unstructured.NestedStringMap(obj.Object, "spec", "template", "metadata", "annotations")
@@ -551,7 +551,7 @@ func restartResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versi
 			log.Warnf("Failed to update %s/%s: %v", kind, resourceName, err)
 			continue
 		}
-		log.Infof("Successfully restarted %s/%s", kind, resourceName)
+		log.Debugf("Successfully restarted %s/%s", kind, resourceName)
 	}
 
 	return nil
@@ -630,21 +630,21 @@ func deleteResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versio
 	}
 
 	if len(list.Items) == 0 {
-		log.Warnf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
+		log.Debugf("No %s found matching label selector %s in namespace %s", kind, labelSelectorString, namespace)
 		return nil
 	}
 
 	// Delete each matching resource
 	for _, obj := range list.Items {
 		resourceName := obj.GetName()
-		log.Infof("Deleting %s/%s in namespace %s", kind, resourceName, namespace)
+		log.Debugf("Deleting %s/%s in namespace %s", kind, resourceName, namespace)
 
 		err = dyn.Resource(gvr).Namespace(namespace).Delete(ctx, resourceName, v1.DeleteOptions{})
 		if err != nil {
 			log.Warnf("Failed to delete %s/%s: %v", kind, resourceName, err)
 			continue
 		}
-		log.Infof("Successfully deleted %s/%s", kind, resourceName)
+		log.Debugf("Successfully deleted %s/%s", kind, resourceName)
 	}
 
 	return nil
@@ -703,19 +703,19 @@ func PostInstallPatches(patches []PostInstallPatch, ctx context.Context, cfg *re
 	for _, patch := range patches {
 		// Validate required fields
 		if patch.Target.Version == "" {
-			log.Warn("Skipping patch with empty 'version' field")
+			log.Debug("Skipping patch with empty 'version' field")
 			continue
 		}
 		if patch.Target.Kind == "" {
-			log.Warn("Skipping patch with empty 'kind' field")
+			log.Debug("Skipping patch with empty 'kind' field")
 			continue
 		}
 		if patch.Target.Name == "" {
-			log.Warn("Skipping patch with empty 'name' field")
+			log.Debug("Skipping patch with empty 'name' field")
 			continue
 		}
 		if patch.Patch == "" {
-			log.Warn("Skipping patch with empty 'patch' field")
+			log.Debug("Skipping patch with empty 'patch' field")
 			continue
 		}
 
@@ -745,7 +745,7 @@ func PostInstallPatches(patches []PostInstallPatch, ctx context.Context, cfg *re
 		gvr := mapping.Resource
 
 		// Log the patch operation
-		log.Infof("Applying patch to %s/%s in namespace %s", patch.Target.Kind, patch.Target.Name, namespace)
+		log.Debugf("Applying patch to %s/%s in namespace %s", patch.Target.Kind, patch.Target.Name, namespace)
 
 		// Convert YAML to JSON if needed
 		var patchBytes []byte
@@ -781,7 +781,7 @@ func PostInstallPatches(patches []PostInstallPatch, ctx context.Context, cfg *re
 			continue
 		}
 
-		log.Infof("Successfully patched %s/%s", patch.Target.Kind, patch.Target.Name)
+		log.Debugf("Successfully patched %s/%s", patch.Target.Kind, patch.Target.Name)
 	}
 
 	return nil
