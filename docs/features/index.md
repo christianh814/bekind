@@ -24,6 +24,9 @@ Apply Kubernetes YAML manifests automatically after cluster setup is complete.
 ### [Post Install Actions]({% link features/post-install-actions.md %})
 Perform automated actions on Kubernetes resources, such as restarting deployments or deleting pods.
 
+### [Post Install Patches]({% link features/post-install-patches.md %})
+Apply JSON Patch operations to Kubernetes resources for fine-grained modifications after installation.
+
 ---
 
 Each feature can be configured independently in your BeKind configuration file. You can use one, some, or all features depending on your needs.

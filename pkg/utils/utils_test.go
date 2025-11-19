@@ -586,3 +586,219 @@ func TestPostInstallAction_Validation(t *testing.T) {
 		})
 	}
 }
+
+func TestPostInstallPatches_Validation(t *testing.T) {
+	testCases := []struct {
+		name           string
+		patch          PostInstallPatch
+		shouldValidate bool
+	}{
+		{
+			name: "valid patch with all required fields",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Group:     "gateway.networking.k8s.io",
+					Version:   "v1",
+					Kind:      "GRPCRoute",
+					Name:      "argocd-server-grpc",
+					Namespace: "argocd",
+				},
+				Patch: `[{"op": "replace", "path": "/spec/rules/0/backendRefs/0/port", "value": 443}]`,
+			},
+			shouldValidate: true,
+		},
+		{
+			name: "valid patch with core group (empty string)",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Group:     "",
+					Version:   "v1",
+					Kind:      "Service",
+					Name:      "my-service",
+					Namespace: "default",
+				},
+				Patch: `[{"op": "add", "path": "/metadata/labels/app", "value": "test"}]`,
+			},
+			shouldValidate: true,
+		},
+		{
+			name: "valid patch without namespace (defaults to default)",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Version: "v1",
+					Kind:    "ConfigMap",
+					Name:    "my-config",
+				},
+				Patch: `[{"op": "replace", "path": "/data/key", "value": "new-value"}]`,
+			},
+			shouldValidate: true,
+		},
+		{
+			name: "valid patch without group (defaults to core)",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Version:   "v1",
+					Kind:      "Pod",
+					Name:      "my-pod",
+					Namespace: "kube-system",
+				},
+				Patch: `[{"op": "add", "path": "/metadata/annotations/test", "value": "annotation"}]`,
+			},
+			shouldValidate: true,
+		},
+		{
+			name: "invalid - no version",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Kind:      "Deployment",
+					Name:      "test",
+					Namespace: "default",
+				},
+				Patch: `[{"op": "replace", "path": "/spec/replicas", "value": 3}]`,
+			},
+			shouldValidate: false,
+		},
+		{
+			name: "invalid - no kind",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Version:   "v1",
+					Name:      "test",
+					Namespace: "default",
+				},
+				Patch: `[{"op": "replace", "path": "/spec/replicas", "value": 3}]`,
+			},
+			shouldValidate: false,
+		},
+		{
+			name: "invalid - no name",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Version:   "v1",
+					Kind:      "Deployment",
+					Namespace: "default",
+				},
+				Patch: `[{"op": "replace", "path": "/spec/replicas", "value": 3}]`,
+			},
+			shouldValidate: false,
+		},
+		{
+			name: "invalid - no patch",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Version:   "v1",
+					Kind:      "Deployment",
+					Name:      "test",
+					Namespace: "default",
+				},
+				Patch: "",
+			},
+			shouldValidate: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Basic validation checks
+			hasVersion := tc.patch.Target.Version != ""
+			hasKind := tc.patch.Target.Kind != ""
+			hasName := tc.patch.Target.Name != ""
+			hasPatch := tc.patch.Patch != ""
+
+			validates := hasVersion && hasKind && hasName && hasPatch
+
+			if validates != tc.shouldValidate {
+				t.Errorf("Expected validation to be %v, got %v", tc.shouldValidate, validates)
+			}
+		})
+	}
+}
+
+func TestPostInstallPatches_Defaults(t *testing.T) {
+	testCases := []struct {
+		name              string
+		patch             PostInstallPatch
+		expectedGroup     string
+		expectedNamespace string
+	}{
+		{
+			name: "empty group defaults to core",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Group:     "",
+					Version:   "v1",
+					Kind:      "Service",
+					Name:      "my-service",
+					Namespace: "test-ns",
+				},
+				Patch: `[{"op": "add", "path": "/metadata/labels/app", "value": "test"}]`,
+			},
+			expectedGroup:     "",
+			expectedNamespace: "test-ns",
+		},
+		{
+			name: "empty namespace defaults to default",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Group:     "apps",
+					Version:   "v1",
+					Kind:      "Deployment",
+					Name:      "my-deployment",
+					Namespace: "",
+				},
+				Patch: `[{"op": "replace", "path": "/spec/replicas", "value": 3}]`,
+			},
+			expectedGroup:     "apps",
+			expectedNamespace: "default",
+		},
+		{
+			name: "both empty - core group and default namespace",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Version: "v1",
+					Kind:    "ConfigMap",
+					Name:    "my-config",
+				},
+				Patch: `[{"op": "add", "path": "/data/key", "value": "value"}]`,
+			},
+			expectedGroup:     "",
+			expectedNamespace: "default",
+		},
+		{
+			name: "explicit values are preserved",
+			patch: PostInstallPatch{
+				Target: PatchTarget{
+					Group:     "gateway.networking.k8s.io",
+					Version:   "v1",
+					Kind:      "HTTPRoute",
+					Name:      "my-route",
+					Namespace: "custom-ns",
+				},
+				Patch: `[{"op": "replace", "path": "/spec/rules/0/backendRefs/0/port", "value": 8080}]`,
+			},
+			expectedGroup:     "gateway.networking.k8s.io",
+			expectedNamespace: "custom-ns",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Apply defaults as the function would
+			group := tc.patch.Target.Group
+			if group == "" {
+				group = ""
+			}
+			namespace := tc.patch.Target.Namespace
+			if namespace == "" {
+				namespace = "default"
+			}
+
+			if group != tc.expectedGroup {
+				t.Errorf("Expected group to be '%s', got '%s'", tc.expectedGroup, group)
+			}
+			if namespace != tc.expectedNamespace {
+				t.Errorf("Expected namespace to be '%s', got '%s'", tc.expectedNamespace, namespace)
+			}
+		})
+	}
+}

@@ -650,6 +650,143 @@ func deleteResourcesByLabel(ctx context.Context, cfg *rest.Config, group, versio
 	return nil
 }
 
+// PatchTarget represents the target resource for a patch operation
+type PatchTarget struct {
+	Group     string `mapstructure:"group"`
+	Version   string `mapstructure:"version"`
+	Kind      string `mapstructure:"kind"`
+	Name      string `mapstructure:"name"`
+	Namespace string `mapstructure:"namespace"`
+}
+
+// PostInstallPatch represents a JSON Patch to be applied to a Kubernetes resource
+type PostInstallPatch struct {
+	Target PatchTarget `mapstructure:"target"`
+	Patch  string      `mapstructure:"patch"`
+}
+
+// convertYAMLtoJSONCompatible converts map[interface{}]interface{} to map[string]interface{}
+// which is needed for JSON marshaling
+func convertYAMLtoJSONCompatible(i interface{}) interface{} {
+	switch x := i.(type) {
+	case map[interface{}]interface{}:
+		m2 := map[string]interface{}{}
+		for k, v := range x {
+			m2[k.(string)] = convertYAMLtoJSONCompatible(v)
+		}
+		return m2
+	case []interface{}:
+		for i, v := range x {
+			x[i] = convertYAMLtoJSONCompatible(v)
+		}
+	}
+	return i
+}
+
+// PostInstallPatches applies JSON patches to Kubernetes resources
+func PostInstallPatches(patches []PostInstallPatch, ctx context.Context, cfg *rest.Config) error {
+	// Create dynamic client
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Create discovery client for GVR mapping
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+
+	// Process each patch
+	for _, patch := range patches {
+		// Validate required fields
+		if patch.Target.Version == "" {
+			log.Warn("Skipping patch with empty 'version' field")
+			continue
+		}
+		if patch.Target.Kind == "" {
+			log.Warn("Skipping patch with empty 'kind' field")
+			continue
+		}
+		if patch.Target.Name == "" {
+			log.Warn("Skipping patch with empty 'name' field")
+			continue
+		}
+		if patch.Patch == "" {
+			log.Warn("Skipping patch with empty 'patch' field")
+			continue
+		}
+
+		// Set defaults
+		group := patch.Target.Group
+		if group == "" {
+			group = "" // Core API group is empty string
+		}
+		namespace := patch.Target.Namespace
+		if namespace == "" {
+			namespace = "default"
+		}
+
+		// Map Kind to GVR
+		gvk := schema.GroupVersionKind{
+			Group:   group,
+			Version: patch.Target.Version,
+			Kind:    patch.Target.Kind,
+		}
+
+		mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			log.Warnf("Failed to get REST mapping for %s: %v", gvk.String(), err)
+			continue
+		}
+
+		gvr := mapping.Resource
+
+		// Log the patch operation
+		log.Infof("Applying patch to %s/%s in namespace %s", patch.Target.Kind, patch.Target.Name, namespace)
+
+		// Convert YAML to JSON if needed
+		var patchBytes []byte
+		// Try to unmarshal as YAML first (which also handles JSON)
+		var patchData interface{}
+		err = goyaml.Unmarshal([]byte(patch.Patch), &patchData)
+		if err != nil {
+			log.Warnf("Failed to parse patch for %s/%s: %v", patch.Target.Kind, patch.Target.Name, err)
+			continue
+		}
+
+		// Convert YAML map types to JSON-compatible types
+		patchData = convertYAMLtoJSONCompatible(patchData)
+
+		// Convert to JSON
+		patchBytes, err = json.Marshal(patchData)
+		if err != nil {
+			log.Warnf("Failed to convert patch to JSON for %s/%s: %v", patch.Target.Kind, patch.Target.Name, err)
+			continue
+		}
+
+		// Apply the patch
+		var resource dynamic.ResourceInterface
+		if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+			resource = dyn.Resource(gvr).Namespace(namespace)
+		} else {
+			resource = dyn.Resource(gvr)
+		}
+
+		_, err = resource.Patch(ctx, patch.Target.Name, types.JSONPatchType, patchBytes, v1.PatchOptions{})
+		if err != nil {
+			log.Warnf("Failed to patch %s/%s: %v", patch.Target.Kind, patch.Target.Name, err)
+			continue
+		}
+
+		log.Infof("Successfully patched %s/%s", patch.Target.Kind, patch.Target.Name)
+	}
+
+	return nil
+}
+
 // SaveBeKindConfig saves the bekind config to a Kubernetes secret
 func SaveBeKindConfig(cfg *rest.Config, ctx context.Context, ns string, name string) error {
 	// Get the Byteslice of the config

@@ -146,6 +146,14 @@ on the configuration file that is passed`,
 			}
 		}
 
+		// Get post install patches if any
+		var postInstallPatches []utils.PostInstallPatch
+		if viper.IsSet("postInstallPatches") {
+			if err := viper.UnmarshalKey("postInstallPatches", &postInstallPatches); err != nil {
+				log.Warn("Issue parsing postInstallPatches: ", err)
+			}
+		}
+
 		// Set the kindConfig as the config file for Viper
 		kindConfig := viper.GetString("kindConfig")
 		if len(kindConfig) == 0 {
@@ -359,6 +367,14 @@ on the configuration file that is passed`,
 			log.Info("Post Deployment Manifests")
 			if err := utils.PostInstallManifests(postInstallManifests, context.TODO(), rc); err != nil {
 				log.Warn("Issue with Post Install Manifests: ", err)
+			}
+		}
+
+		// Apply post install patches (if any)
+		if len(postInstallPatches) != 0 {
+			log.Info("Post Install Patches")
+			if err := utils.PostInstallPatches(postInstallPatches, context.TODO(), rc); err != nil {
+				log.Warn("Issue with Post Install Patches: ", err)
 			}
 		}
 
