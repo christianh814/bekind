@@ -227,7 +227,7 @@ on the configuration file that is passed`,
 			var helmStacks []struct {
 				Name string `yaml:"name"`
 			}
-			
+
 			if err := viper.UnmarshalKey("helmStack", &helmStacks); err != nil {
 				log.Error("Issue parsing helmStack: ", err)
 				os.Exit(1)
