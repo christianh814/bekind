@@ -13,7 +13,7 @@ BeKind provides several powerful features to automate your Kubernetes cluster se
 ## Available Features
 
 ### [Helm Charts]({% link features/helm-charts.md %})
-Automatically install Helm charts during cluster creation with custom values and configurations.
+Automatically install Helm charts during cluster creation with custom values and configurations. Includes support for **Helm Stacks** (new in v0.6.0) - organize and reuse Helm charts with stack configurations.
 
 ### [Loading Docker Images]({% link features/loading-images.md %})
 Pre-load Docker images into your KIND cluster nodes before starting your applications.

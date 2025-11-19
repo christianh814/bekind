@@ -141,6 +141,30 @@ kindConfig: |
 
 ---
 
+### helmStack
+
+**Type**: `array`  
+**Optional**: Yes  
+**Description**: List of Helm stack names to load and install. Each stack references a `stack.yaml` file in `~/.bekind/helmstack/<stack-name>/`.
+
+Stacks are processed before inline `helmCharts` and allow you to organize and reuse Helm chart configurations across multiple clusters.
+
+See the [Helm Charts feature documentation]({% link features/helm-charts.md %}) for detailed information about Helm Stacks.
+
+**Example**:
+
+```yaml
+helmStack:
+  - name: argocd-cilium
+  - name: monitoring
+```
+
+This would load charts from:
+- `~/.bekind/helmstack/argocd-cilium/stack.yaml`
+- `~/.bekind/helmstack/monitoring/stack.yaml`
+
+---
+
 ### helmCharts
 
 **Type**: `array`  

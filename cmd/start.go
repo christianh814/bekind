@@ -214,13 +214,100 @@ on the configuration file that is passed`,
 			log.Warn("KIND_EXPERIMENTAL_PROVIDER is set, image loading only works with \"docker\" - skipping image load")
 		}
 
-		// Grab HelmCharts provided in the config file
-		// Read YAML file directly to preserve key case sensitivity
+		// Get config file path for reading
 		configFileToRead := cfgFile
 		if configFileToRead == "" {
 			// If no config file was specified via flag, check if viper loaded one
 			configFileToRead = viper.ConfigFileUsed()
 		}
+
+		// Process helmStack if defined
+		if viper.IsSet("helmStack") {
+			log.Info("Processing helmStack configurations")
+			var helmStacks []struct {
+				Name string `yaml:"name"`
+			}
+			
+			if err := viper.UnmarshalKey("helmStack", &helmStacks); err != nil {
+				log.Error("Issue parsing helmStack: ", err)
+				os.Exit(1)
+			}
+
+			// Get home directory for stack path resolution
+			home, err := os.UserHomeDir()
+			if err != nil {
+				log.Error("Failed to get home directory: ", err)
+				os.Exit(1)
+			}
+
+			// Process each stack
+			for _, stack := range helmStacks {
+				stackPath := fmt.Sprintf("%s/.bekind/helmstack/%s/stack.yaml", home, stack.Name)
+				log.Debugf("Loading helm stack from: %s", stackPath)
+
+				// Read stack.yaml file
+				stackData, err := os.ReadFile(stackPath)
+				if err != nil {
+					log.Errorf("Failed to read stack file %s: %v", stackPath, err)
+					os.Exit(1)
+				}
+
+				// Parse stack.yaml
+				var stackConfig struct {
+					HelmCharts []struct {
+						Url          string                 `yaml:"url"`
+						Repo         string                 `yaml:"repo"`
+						Chart        string                 `yaml:"chart"`
+						Release      string                 `yaml:"release"`
+						Namespace    string                 `yaml:"namespace"`
+						ValuesObject map[string]interface{} `yaml:"valuesObject"`
+						Wait         bool                   `yaml:"wait"`
+						Version      string                 `yaml:"version"`
+					} `yaml:"helmCharts"`
+				}
+
+				err = yaml.Unmarshal(stackData, &stackConfig)
+				if err != nil {
+					log.Errorf("Failed to parse stack file %s: %v", stackPath, err)
+					os.Exit(1)
+				}
+
+				log.Infof("Loading %d helm chart(s) from stack '%s'", len(stackConfig.HelmCharts), stack.Name)
+
+				// Append stack charts to HC
+				for _, chart := range stackConfig.HelmCharts {
+					// Convert valuesObject from map[interface{}]interface{} to map[string]interface{}
+					convertedValues := make(map[string]interface{})
+					for k, v := range chart.ValuesObject {
+						convertedValues[k] = convertMapInterface(v)
+					}
+
+					HC = append(HC, struct {
+						Url          string
+						Repo         string
+						Chart        string
+						Release      string
+						Namespace    string
+						ValuesObject map[string]interface{}
+						Wait         bool
+						Version      string
+					}{
+						Url:          chart.Url,
+						Repo:         chart.Repo,
+						Chart:        chart.Chart,
+						Release:      chart.Release,
+						Namespace:    chart.Namespace,
+						ValuesObject: convertedValues,
+						Wait:         chart.Wait,
+						Version:      chart.Version,
+					})
+					log.Debugf("Added chart %s/%s from stack '%s'", chart.Repo, chart.Chart, stack.Name)
+				}
+			}
+		}
+
+		// Grab HelmCharts provided in the config file
+		// Read YAML file directly to preserve key case sensitivity
 
 		if configFileToRead != "" && viper.IsSet("helmCharts") {
 			yamlData, err := os.ReadFile(configFileToRead)
