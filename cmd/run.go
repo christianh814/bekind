@@ -46,18 +46,21 @@ var runCmd = &cobra.Command{
 		// Look for all yaml files in the profile directory
 		configFiles, err := filepath.Glob(filepath.Join(ProfileDir+"/"+args[0], "*.yaml"))
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 
 		// If no config files are found, exit with an error
 		if len(configFiles) == 0 {
-			log.Fatalf("No config files found in profile directory: %s", ProfileDir+"/"+args[0])
+			log.Errorf("No config files found in profile directory: %s", ProfileDir+"/"+args[0])
+			os.Exit(1)
 		}
 
 		// Get view flag
 		view, err := cmd.Flags().GetBool("view")
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			os.Exit(1)
 		}
 
 		// Iterate over all config files and run the profile for each one
@@ -68,7 +71,8 @@ var runCmd = &cobra.Command{
 			// Read the config file, Only displaying an error if there was a problem reading the file.
 			if err := viper.ReadInConfig(); err != nil {
 				if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-					log.Fatal(err)
+					log.Error(err)
+					os.Exit(1)
 				}
 			}
 
@@ -81,7 +85,7 @@ var runCmd = &cobra.Command{
 			} else {
 				// I assume you want to "Run the profile"
 				if !view {
-					log.Info("Running profile: ", args[0], " with config file: ", filepath.Base(configFile))
+					log.Infof("Running profile: %s with config: %s", args[0], filepath.Base(configFile))
 					startCmd.Run(cmd, []string{})
 				}
 

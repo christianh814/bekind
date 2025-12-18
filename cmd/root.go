@@ -19,17 +19,19 @@ import (
 	"fmt"
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var cfgFile string
 var KubeConfig string
+var logLevel string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "bekind",
-	Version: "v0.5.2",
+	Version: "v0.6.0",
 	Short:   "Installs an opinionated KIND cluster",
 	Long: `This command installs a KIND cluster.
 The KIND cluster is then configured based on what configuration file is passed.`,
@@ -48,7 +50,7 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(initConfig, initLogging)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -56,6 +58,31 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bekind/config.yaml)")
 	rootCmd.PersistentFlags().String("name", "kind", "The name of the kind instance")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set the logging level (debug, info, warn, error)")
+}
+
+// initLogging sets up the logging configuration based on the log-level flag
+func initLogging() {
+	// Set log format to be simpler
+	log.SetFormatter(&log.TextFormatter{
+		DisableTimestamp: true,
+		DisableColors:    false,
+	})
+
+	// Parse and set the log level
+	switch logLevel {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+		log.Warnf("Invalid log level '%s', defaulting to 'info'", logLevel)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.

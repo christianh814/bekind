@@ -14,7 +14,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/gofrs/flock"
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -106,8 +105,7 @@ func RepoAdd(name, url string) error {
 	}
 
 	if _, err := r.DownloadIndexFile(); err != nil {
-		err := errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", url)
-		return err
+		return fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", url, err)
 	}
 
 	f.Update(&c)
@@ -125,7 +123,7 @@ func RepoUpdate() error {
 	repoFile := settings.RepositoryConfig
 
 	f, err := repo.LoadFile(repoFile)
-	if os.IsNotExist(errors.Cause(err)) || len(f.Repositories) == 0 {
+	if os.IsNotExist(err) || len(f.Repositories) == 0 {
 		return err
 	}
 	var repos []*repo.ChartRepository
@@ -245,7 +243,7 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 	case "", "application":
 		return true, nil
 	}
-	return false, errors.Errorf("%s charts are not installable", ch.Metadata.Type)
+	return false, fmt.Errorf("%s charts are not installable", ch.Metadata.Type)
 }
 
 func debug(format string, v ...interface{}) {

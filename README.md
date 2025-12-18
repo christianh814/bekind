@@ -30,9 +30,11 @@ bekind destroy
 ## Features
 
 - **Automated Cluster Creation**: Deploy KIND clusters with customizable configurations
+- **Helm Stack Support**: Organize and reuse Helm charts with stack configurations (new in v0.6.0)
 - **Helm Chart Integration**: Automatically install Helm charts during cluster setup
 - **Image Pre-loading**: Load Docker images into your cluster before deployment
 - **Manifest Application**: Apply Kubernetes manifests automatically after cluster creation
+- **Post-Install Patches**: Apply JSON patches to resources for fine-grained modifications
 - **Post-Install Actions**: Perform automated actions like resource restarts and deletions
 
 ## License

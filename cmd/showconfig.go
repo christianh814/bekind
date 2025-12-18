@@ -18,6 +18,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 
@@ -46,13 +47,15 @@ usually the "config.yaml" value in the "bekind-config" secret in the "kube-publi
 			rc, _ := utils.GetRestConfig("")
 			byteSlice, err = utils.GetBeKindConfig(rc, context.TODO(), "kube-public", "bekind-config")
 			if err != nil {
-				log.Fatal(err)
+				log.Error(err)
+				os.Exit(1)
 			}
 		} else {
 			// Marshal in the entire config file int a byteslice and check for errors
 			byteSlice, err = yaml.Marshal(viper.AllSettings())
 			if err != nil {
-				log.Fatal(err)
+				log.Error(err)
+				os.Exit(1)
 			}
 
 		}
