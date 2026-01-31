@@ -24,6 +24,11 @@ var Provider *cluster.Provider = cluster.NewProvider(
 	utils.GetDefaultRuntime(),
 )
 
+// GetKindImage returns version of kind and default image
+func GetKindImage() string {
+	return kindConfig.Image
+}
+
 // CreateKindCluster creates KIND cluster
 func CreateKindCluster(name string, kindImage string) error {
 	// If a config file is given, try to use that. Garbage in, garbage out though
