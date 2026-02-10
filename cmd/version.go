@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/christianh814/bekind/pkg/kind"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +29,7 @@ var versionCmd = &cobra.Command{
 	Short: "Shows the version.",
 	Long:  `Shows the version of this command in JSON format.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		versionMap := map[string]string{rootCmd.Name(): rootCmd.Version}
+		versionMap := map[string]string{rootCmd.Name(): rootCmd.Version, "kindImage": kind.GetKindImage()}
 		versionJson, _ := json.Marshal(versionMap)
 		fmt.Println(string(versionJson))
 	},
