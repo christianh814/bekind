@@ -21,7 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/cli"
 )
 
 func TestInstallFunction(t *testing.T) {
@@ -122,16 +123,88 @@ func TestInstallChartFunction(t *testing.T) {
 }
 
 func TestIsChartInstallable(t *testing.T) {
-	// We can't easily test this without creating actual chart metadata
-	// but we can test that the function exists
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("isChartInstallable should not panic: %v", r)
-		}
-	}()
+	// Create a temporary directory for test charts
+	tmpDir := t.TempDir()
 
-	// The function exists if we can reference it without compilation errors
-	_ = isChartInstallable
+	testCases := []struct {
+		name          string
+		chartType     string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "application chart",
+			chartType:   "application",
+			expectError: false,
+		},
+		{
+			name:        "empty type (defaults to application)",
+			chartType:   "",
+			expectError: false,
+		},
+		{
+			name:          "library chart",
+			chartType:     "library",
+			expectError:   true,
+			errorContains: "library charts are not installable",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a test chart directory
+			chartDir := filepath.Join(tmpDir, tc.name)
+			err := os.MkdirAll(chartDir, 0755)
+			if err != nil {
+				t.Fatalf("Failed to create chart directory: %v", err)
+			}
+
+			// Create Chart.yaml with the specified type
+			chartYaml := "apiVersion: v2\nname: test-chart\nversion: 1.0.0\n"
+			if tc.chartType != "" {
+				chartYaml += "type: " + tc.chartType + "\n"
+			}
+
+			err = os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte(chartYaml), 0644)
+			if err != nil {
+				t.Fatalf("Failed to create Chart.yaml: %v", err)
+			}
+
+			// Create minimal templates directory (required for valid chart)
+			templatesDir := filepath.Join(chartDir, "templates")
+			err = os.MkdirAll(templatesDir, 0755)
+			if err != nil {
+				t.Fatalf("Failed to create templates directory: %v", err)
+			}
+
+			// Load the chart using Helm's loader
+			chartLoaded, err := loader.Load(chartDir)
+			if err != nil {
+				t.Fatalf("Failed to load chart: %v", err)
+			}
+
+			// Test isChartInstallable
+			installable, err := isChartInstallable(chartLoaded)
+
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected error for %s, but got none", tc.name)
+				} else if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
+					t.Errorf("Expected error containing '%s', got: %v", tc.errorContains, err)
+				}
+				if installable {
+					t.Errorf("Expected chart to not be installable, but it was")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error for %s, but got: %v", tc.name, err)
+				}
+				if !installable {
+					t.Errorf("Expected chart to be installable, but it was not")
+				}
+			}
+		})
+	}
 }
 
 func TestDebugFunction(t *testing.T) {

@@ -15,15 +15,15 @@ import (
 
 	"github.com/gofrs/flock"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/action"
+	chartpkg "helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 var settings *cli.EnvSettings
@@ -154,7 +154,7 @@ func RepoUpdate() error {
 // InstallChart
 func InstallChart(name, repo, chart, version, url string, wait bool, valuesObject map[string]interface{}) error {
 	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER")); err != nil {
 		return err
 	}
 	client := action.NewInstall(actionConfig)
@@ -199,7 +199,13 @@ func InstallChart(name, repo, chart, version, url string, wait bool, valuesObjec
 		return err
 	}
 
-	if req := chartRequested.Metadata.Dependencies; req != nil {
+	// Create accessor to access chart metadata
+	accessor, err := chartpkg.NewAccessor(chartRequested)
+	if err != nil {
+		return err
+	}
+
+	if req := accessor.MetaDependencies(); len(req) > 0 {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			if client.DependencyUpdate {
@@ -225,9 +231,16 @@ func InstallChart(name, repo, chart, version, url string, wait bool, valuesObjec
 	// set and have helm create the namespace
 	client.Namespace = settings.Namespace()
 	client.CreateNamespace = true
-	client.Wait = wait
-	// TODO: Make this configurable
-	client.Timeout = 180 * time.Second
+
+	// Configure wait behavior based on the wait parameter
+	if wait {
+		client.WaitStrategy = "watcher"
+		client.Timeout = 600 * time.Second // 10 minutes for complex deployments
+		client.WaitForJobs = false         // Don't wait for jobs to complete
+	} else {
+		// Even when not waiting, we need to set a wait strategy in Helm v4
+		client.WaitStrategy = "hookOnly"
+	}
 
 	_, err = client.Run(chartRequested, vals)
 	if err != nil {
@@ -238,12 +251,23 @@ func InstallChart(name, repo, chart, version, url string, wait bool, valuesObjec
 	return nil
 }
 
-func isChartInstallable(ch *chart.Chart) (bool, error) {
-	switch ch.Metadata.Type {
-	case "", "application":
+func isChartInstallable(ch chartpkg.Charter) (bool, error) {
+	accessor, err := chartpkg.NewAccessor(ch)
+	if err != nil {
+		return false, err
+	}
+
+	if accessor.IsLibraryChart() {
+		return false, fmt.Errorf("library charts are not installable")
+	}
+
+	metadata := accessor.MetadataAsMap()
+	chartType, ok := metadata["type"].(string)
+	if !ok || chartType == "" || chartType == "application" {
 		return true, nil
 	}
-	return false, fmt.Errorf("%s charts are not installable", ch.Metadata.Type)
+
+	return false, fmt.Errorf("%s charts are not installable", chartType)
 }
 
 func debug(format string, v ...interface{}) {

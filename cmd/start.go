@@ -376,7 +376,12 @@ on the configuration file that is passed`,
 			// 	TODO: Currently it's garbage in garbage out, if the user provides a bad chart it will fail
 			for _, v := range HC {
 				// Install HelmChart
-				log.Infof("Installing Helm Chart %s/%s from %s", v.Repo, v.Chart, v.Url)
+				if v.Repo == "" || v.Chart == "" {
+					log.Infof("Installing Helm Chart %s", v.Url)
+				} else {
+					log.Infof("Installing Helm Chart %s/%s from %s", v.Repo, v.Chart, v.Url)
+
+				}
 
 				if err := helm.Install(v.Namespace, v.Url, v.Repo, v.Chart, v.Release, v.Version, v.Wait, v.ValuesObject); err != nil {
 					log.Fatal(err)
