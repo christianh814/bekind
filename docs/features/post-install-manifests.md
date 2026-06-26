@@ -2,7 +2,7 @@
 layout: default
 title: Post Install Manifests
 parent: Features
-nav_order: 3
+nav_order: 4
 description: "Apply Kubernetes manifests automatically"
 ---
 
@@ -268,9 +268,10 @@ If resources have dependencies, list them in the correct order. For example, cre
 
 1. KIND cluster is created
 2. Docker images are loaded (if configured)
-3. Helm charts are installed (if configured)
-4. **Post-install manifests are applied** ← You are here
-5. Post-install actions are performed (if configured)
+3. Pre-helm manifests are applied (if configured)
+4. Helm charts are installed (if configured)
+5. **Post-install manifests are applied** ← You are here
+6. Post-install actions are performed (if configured)
 
 ---
 

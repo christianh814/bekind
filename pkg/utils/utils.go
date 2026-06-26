@@ -264,8 +264,8 @@ func ConvertHelmValsToMap(a []struct {
 
 }
 
-// PostInstallManifests will install the manifests after cluster has been created and setup. It is currently best effort/garbage in garbage out
-func PostInstallManifests(manifests []string, ctx context.Context, cfg *rest.Config) error {
+// ApplyManifests applies the given Kubernetes manifests to the cluster. It is used for both pre-helm and post-install manifests. It is currently best effort/garbage in garbage out
+func ApplyManifests(manifests []string, ctx context.Context, cfg *rest.Config) error {
 	// Loop through the manifests and apply them
 	for _, m := range manifests {
 		// Get the bytes from the manifest

@@ -2,7 +2,7 @@
 layout: default
 title: Post Install Actions
 parent: Features
-nav_order: 4
+nav_order: 5
 description: "Automate resource restarts and deletions"
 ---
 
@@ -362,10 +362,11 @@ postInstallActions:
 
 1. KIND cluster is created
 2. Docker images are loaded (if configured)
-3. Helm charts are installed (if configured)
-4. Post-install manifests are applied (if configured)
-5. Post-install patches are applied (if configured)
-6. **Post-install actions are performed** ← You are here
+3. Pre-helm manifests are applied (if configured)
+4. Helm charts are installed (if configured)
+5. Post-install manifests are applied (if configured)
+6. Post-install patches are applied (if configured)
+7. **Post-install actions are performed** ← You are here
 
 This order allows you to patch resources first, then trigger actions like restarts to pick up the patched configurations.
 

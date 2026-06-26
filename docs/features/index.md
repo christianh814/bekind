@@ -18,6 +18,9 @@ Automatically install Helm charts during cluster creation with custom values and
 ### [Loading Docker Images]({% link features/loading-images.md %})
 Pre-load Docker images into your KIND cluster nodes before starting your applications.
 
+### [Pre Helm Manifests]({% link features/pre-helm-manifests.md %})
+Apply Kubernetes YAML manifests automatically before Helm charts are installed, ideal for namespaces, CRDs, and secrets that charts depend on.
+
 ### [Post Install Manifests]({% link features/post-install-manifests.md %})
 Apply Kubernetes YAML manifests automatically after cluster setup is complete.
 
