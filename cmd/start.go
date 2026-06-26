@@ -134,6 +134,10 @@ on the configuration file that is passed`,
 		// Get images to load from the config file. NOTE: Images must exist on the host FIRST.
 		dockerImages := viper.GetStringSlice("loadDockerImages.images")
 
+		// Get pre-helm manifests. NOTE: these need to be in YAML format currently
+		// These are applied BEFORE helm charts are installed.
+		preHelmManifests := viper.GetStringSlice("preHelmManifests")
+
 		// Get post install manifests. NOTE: these need to be in YAML format currently
 		// TODO: support for JSON formatted K8S Manifests
 		postInstallManifests := viper.GetStringSlice("postInstallManifests")
@@ -370,6 +374,21 @@ on the configuration file that is passed`,
 		var argoUrl string
 		var argoPass string
 
+		// Set up a restconfig
+		rc, err := utils.GetRestConfig("")
+		if err != nil {
+			log.Error(err)
+			os.Exit(1)
+		}
+
+		// Apply pre-helm manifests into the cluster (if any) before installing Helm charts
+		if len(preHelmManifests) != 0 {
+			log.Info("Applying pre-helm manifests")
+			if err := utils.ApplyManifests(preHelmManifests, context.TODO(), rc); err != nil {
+				log.Warn("Issue with pre-helm manifests: ", err)
+			}
+		}
+
 		// Install Helm Charts if any exist in the config file
 		if len(HC) != 0 {
 			// Range over the helmCharts and try to install them
@@ -452,17 +471,10 @@ on the configuration file that is passed`,
 			}
 		}
 
-		// Set up a restconfig
-		rc, err := utils.GetRestConfig("")
-		if err != nil {
-			log.Error(err)
-			os.Exit(1)
-		}
-
 		// Load manifests into the cluster (if any)
 		if len(postInstallManifests) != 0 {
 			log.Info("Applying post-install manifests")
-			if err := utils.PostInstallManifests(postInstallManifests, context.TODO(), rc); err != nil {
+			if err := utils.ApplyManifests(postInstallManifests, context.TODO(), rc); err != nil {
 				log.Warn("Issue with post-install manifests: ", err)
 			}
 		}

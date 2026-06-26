@@ -53,6 +53,8 @@ loadDockerImages:
   pullImages: true
   images:
     - gcr.io/kuar-demo/kuard-amd64:blue
+preHelmManifests:
+  - "file:///path/to/namespace.yaml"
 postInstallManifests:
   - "file:///path/to/manifest.yaml"
 postInstallActions:
@@ -208,6 +210,24 @@ loadDockerImages:
   images:
     - gcr.io/kuar-demo/kuard-amd64:blue
     - quay.io/christianh814/simple-go:latest
+```
+
+---
+
+### preHelmManifests
+
+**Type**: `array`  
+**Optional**: Yes  
+**Description**: List of Kubernetes YAML manifest files to apply **before** Helm charts are installed. Useful for resources that charts depend on, such as namespaces, CRDs, or secrets. Supports both local files (`file://`) and remote URLs (`http://` or `https://`). Application is best-effort: failures are logged as warnings and do not stop the cluster setup.
+
+See the [Pre Helm Manifests feature documentation]({% link features/pre-helm-manifests.md %}) for detailed information.
+
+**Example**:
+
+```yaml
+preHelmManifests:
+  - "file:///home/user/k8s/namespace.yaml"
+  - "https://example.com/configs/crds.yaml"
 ```
 
 ---

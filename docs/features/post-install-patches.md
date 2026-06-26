@@ -2,7 +2,7 @@
 layout: default
 title: Post Install Patches
 parent: Features
-nav_order: 5
+nav_order: 6
 description: "Apply JSON patches to Kubernetes resources"
 ---
 
@@ -418,11 +418,12 @@ postInstallPatches:
 Post-install patches execute in the following order:
 
 1. KIND cluster creation
-2. Helm chart installations
-3. Post-install manifests
-4. **Post-install patches** ← You are here
-5. Post-install actions
-6. BeKind config saved to secret
+2. Pre-helm manifests
+3. Helm chart installations
+4. Post-install manifests
+5. **Post-install patches** ← You are here
+6. Post-install actions
+7. BeKind config saved to secret
 
 This ensures patches can modify resources created by earlier steps, and then actions can be performed on the patched resources (e.g., restarting deployments after patching their configuration).
 

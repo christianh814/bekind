@@ -297,17 +297,17 @@ func TestLabelWorkers(t *testing.T) {
 	}
 }
 
-func TestPostInstallManifests(t *testing.T) {
+func TestApplyManifests(t *testing.T) {
 	// Test with empty manifests slice
-	err := PostInstallManifests([]string{}, context.TODO(), nil)
+	err := ApplyManifests([]string{}, context.TODO(), nil)
 	if err != nil {
-		t.Errorf("PostInstallManifests should handle empty slice: %v", err)
+		t.Errorf("ApplyManifests should handle empty slice: %v", err)
 	}
 
 	// Test with invalid manifest URL
-	err = PostInstallManifests([]string{"invalid-url"}, context.TODO(), nil)
+	err = ApplyManifests([]string{"invalid-url"}, context.TODO(), nil)
 	if err == nil {
-		t.Error("PostInstallManifests should fail with invalid URL")
+		t.Error("ApplyManifests should fail with invalid URL")
 	}
 }
 
