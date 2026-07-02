@@ -191,6 +191,16 @@ stringData:
   token: "example"
 ```
 
+### Namespaces
+
+For namespace-scoped resources, BeKind honors the `metadata.namespace` field in
+the manifest. If a namespace-scoped resource omits `metadata.namespace`, BeKind
+applies it to the `default` namespace (mirroring `kubectl` behavior).
+
+{: .note }
+Cluster-scoped resources (such as `Namespace`, `ClusterRole`, or CRDs) are
+unaffected by this defaulting.
+
 ### Local File Accessibility
 
 Ensure BeKind can read the manifest files:
