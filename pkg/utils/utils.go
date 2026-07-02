@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -34,6 +35,26 @@ import (
 )
 
 var decUnstructured = yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+
+// restMappingBackoff controls how long DoSSA waits for a manifest's Kind to
+// become discoverable before giving up. This handles the race where a CRD was
+// just installed (e.g. via pre-helm manifests or a Helm chart's installCRDs)
+// but the API server's discovery data hasn't caught up yet, which surfaces as
+// "the server could not find the requested resource".
+//
+// With these values the RESTMapping is attempted up to 5 times with an
+// exponential backoff between attempts (1s, 2s, 4s, 8s), for a ceiling of
+// roughly 15s of waiting before the error is reported.
+//
+// NOTE: This is intentionally a package-level variable (rather than an inline
+// literal) so it can be sourced from configuration later without touching
+// callers.
+var restMappingBackoff = wait.Backoff{
+	Steps:    5,
+	Duration: 1 * time.Second,
+	Factor:   2.0,
+	Cap:      15 * time.Second,
+}
 
 // GetDefault selected the default runtime from the environment override
 func GetDefaultRuntime() cluster.ProviderOption {
@@ -77,17 +98,46 @@ func DoSSA(ctx context.Context, cfg *rest.Config, yaml []byte) error {
 		return err
 	}
 
-	// Get the GVR
-	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	// Get the GVR. A freshly installed CRD may not be discoverable yet, so
+	// retry with a bounded backoff, resetting the mapper's discovery cache
+	// between attempts. Only "kind not found" style errors are retried;
+	// anything else is surfaced immediately.
+	var mapping *meta.RESTMapping
+	var mappingErr error
+	err = wait.ExponentialBackoffWithContext(ctx, restMappingBackoff, func(context.Context) (bool, error) {
+		mapping, mappingErr = mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if mappingErr == nil {
+			return true, nil
+		}
+		// Kind isn't discoverable yet: drop the stale discovery cache and retry.
+		if meta.IsNoMatchError(mappingErr) || apierrors.IsNotFound(mappingErr) {
+			mapper.Reset()
+			return false, nil
+		}
+		// Not a transient discovery miss: stop and surface the error.
+		return false, mappingErr
+	})
 	if err != nil {
+		// Prefer the underlying mapping error over the generic backoff timeout error.
+		if mappingErr != nil {
+			return mappingErr
+		}
 		return err
 	}
 
 	// Get the REST interface for the GVR
 	var dr dynamic.ResourceInterface
 	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
-		// namespaced resources should specify the namespace
-		dr = dyn.Resource(mapping.Resource).Namespace(obj.GetNamespace())
+		// Namespaced resources must target a namespace. If the manifest omits
+		// metadata.namespace, default it to "default" (mirroring kubectl);
+		// otherwise the request would 404 with "the server could not find the
+		// requested resource".
+		ns := obj.GetNamespace()
+		if ns == "" {
+			ns = "default"
+		}
+		obj.SetNamespace(ns)
+		dr = dyn.Resource(mapping.Resource).Namespace(ns)
 	} else {
 		// for cluster-wide resources
 		dr = dyn.Resource(mapping.Resource)
@@ -264,35 +314,46 @@ func ConvertHelmValsToMap(a []struct {
 
 }
 
-// ApplyManifests applies the given Kubernetes manifests to the cluster. It is used for both pre-helm and post-install manifests. It is currently best effort/garbage in garbage out
+// ApplyManifests applies the given Kubernetes manifests to the cluster. It is
+// used for both pre-helm and post-install manifests. It is best effort: a
+// failure reading, parsing, or applying one manifest does not stop the rest.
+// All failures are logged individually and returned as an aggregated error
+// (nil if everything succeeded).
 func ApplyManifests(manifests []string, ctx context.Context, cfg *rest.Config) error {
+	var failures int
+
 	// Loop through the manifests and apply them
 	for _, m := range manifests {
 		// Get the bytes from the manifest
 		data, err := getPostInstallBytes(m)
 		if err != nil {
-			return err
+			log.Warnf("Skipping manifest %q: could not read: %v", m, err)
+			failures++
+			continue
 		}
 
 		// Split the YAML into a slice of bytes
 		yamls, err := SplitYAML(data)
 		if err != nil {
-			return err
+			log.Warnf("Skipping manifest %q: could not parse YAML: %v", m, err)
+			failures++
+			continue
 		}
 
-		// Loop through the yamls and apply them
+		// Loop through the yamls and apply them. A failure applying one
+		// document does not stop the remaining documents or manifests.
 		for _, y := range yamls {
-			// Apply the YAML
-			err := DoSSA(ctx, cfg, y)
-			if err != nil {
-				return err
+			if err := DoSSA(ctx, cfg, y); err != nil {
+				log.Warnf("Failed to apply a resource from manifest %q: %v", m, err)
+				failures++
 			}
-			// Add 3 second jitter
-			//time.Sleep(3 * time.Second)
 		}
-
 	}
-	// If we are here, then we should be okay
+
+	// Return a concise summary; per-failure details were already logged above.
+	if failures > 0 {
+		return fmt.Errorf("%d resource(s) failed to apply, see warnings above for details", failures)
+	}
 	return nil
 }
 
