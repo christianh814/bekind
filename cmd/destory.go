@@ -41,22 +41,26 @@ if one isn't named.`,
 			os.Exit(1)
 		}
 
-		// Set the kindConfig as the config file for Viper
-		kindConfig := viper.GetString("kindConfig")
-		if len(kindConfig) == 0 {
-			log.Error("Could not find kindConfig")
-			os.Exit(1)
-		}
-		viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig)))
+		// The --name flag takes precedence over the config file. Only fall back
+		// to the name in the config file when --name wasn't explicitly passed.
+		if !cmd.Flags().Changed("name") {
+			// Set the kindConfig as the config file for Viper
+			kindConfig := viper.GetString("kindConfig")
+			if len(kindConfig) == 0 {
+				log.Error("Could not find kindConfig")
+				os.Exit(1)
+			}
+			viper.ReadConfig(bytes.NewBuffer([]byte(kindConfig)))
 
-		// Check to see if the cluster name is set in the config file
-		if viper.GetString("name") != "" {
-			clusterName = viper.GetString("name")
-		}
+			// Check to see if the cluster name is set in the config file
+			if viper.GetString("name") != "" {
+				clusterName = viper.GetString("name")
+			}
 
-		// Set config file back to default for Viper
-		viper.SetConfigFile(cfgFile)
-		viper.ReadInConfig()
+			// Set config file back to default for Viper
+			viper.SetConfigFile(cfgFile)
+			viper.ReadInConfig()
+		}
 
 		log.Infof("Destroying KIND cluster: %s", clusterName)
 		if err := kind.DeleteKindCluster(clusterName, ""); err != nil {
@@ -68,4 +72,22 @@ if one isn't named.`,
 
 func init() {
 	rootCmd.AddCommand(destroyCmd)
+
+	// The --name flag is a persistent flag defined on the root command, whose
+	// init() runs after this file's. Register the completion via OnInitialize so
+	// it happens once all flags are defined; this also covers the shell
+	// completion code path.
+	cobra.OnInitialize(func() {
+		destroyCmd.RegisterFlagCompletionFunc("name", completeClusterNames)
+	})
+}
+
+// completeClusterNames provides shell completion for the --name flag by
+// listing the currently running clusters (same source as "bekind ls").
+func completeClusterNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	clusters, err := kind.ListKindClusters()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	return clusters, cobra.ShellCompDirectiveNoFileComp
 }
