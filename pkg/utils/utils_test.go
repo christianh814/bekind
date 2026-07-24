@@ -20,6 +20,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -308,6 +310,68 @@ func TestApplyManifests(t *testing.T) {
 	err = ApplyManifests([]string{"invalid-url"}, context.TODO(), nil)
 	if err == nil {
 		t.Error("ApplyManifests should fail with invalid URL")
+	}
+
+	// Test with a dir:// pointing at a non-existent directory
+	err = ApplyManifests([]string{"dir:///nonexistent/path/for/bekind/test"}, context.TODO(), nil)
+	if err == nil {
+		t.Error("ApplyManifests should fail when dir:// points at a missing directory")
+	}
+}
+
+func TestExpandManifestRef(t *testing.T) {
+	// Non dir:// references should pass through unchanged.
+	for _, ref := range []string{
+		"http://example.com/manifest.yaml",
+		"https://example.com/manifest.yaml",
+		"file:///tmp/manifest.yaml",
+		"invalid-url",
+	} {
+		got, err := expandManifestRef(ref)
+		if err != nil {
+			t.Fatalf("expandManifestRef(%q) returned error: %v", ref, err)
+		}
+		if !reflect.DeepEqual(got, []string{ref}) {
+			t.Errorf("expandManifestRef(%q) = %v, want %v", ref, got, []string{ref})
+		}
+	}
+
+	// A dir:// reference should expand into sorted file:// references for the
+	// manifest files directly inside it, skipping non-manifest files and
+	// subdirectories.
+	dir := t.TempDir()
+
+	manifestFiles := []string{"b.yaml", "a.yml", "c.json"}
+	for _, name := range manifestFiles {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("kind: ConfigMap\n"), 0o600); err != nil {
+			t.Fatalf("failed to write %s: %v", name, err)
+		}
+	}
+	// Files that should be ignored.
+	if err := os.WriteFile(filepath.Join(dir, "readme.txt"), []byte("ignore me"), 0o600); err != nil {
+		t.Fatalf("failed to write readme.txt: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "nested"), 0o755); err != nil {
+		t.Fatalf("failed to create nested dir: %v", err)
+	}
+
+	got, err := expandManifestRef("dir://" + dir)
+	if err != nil {
+		t.Fatalf("expandManifestRef returned error: %v", err)
+	}
+
+	want := []string{
+		"file://" + filepath.Join(dir, "a.yml"),
+		"file://" + filepath.Join(dir, "b.yaml"),
+		"file://" + filepath.Join(dir, "c.json"),
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expandManifestRef(dir://%s) = %v, want %v", dir, got, want)
+	}
+
+	// A dir:// reference to a missing directory should return an error.
+	if _, err := expandManifestRef("dir:///nonexistent/path/for/bekind/test"); err == nil {
+		t.Error("expandManifestRef should error on a missing directory")
 	}
 }
 
