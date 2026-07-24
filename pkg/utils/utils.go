@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -314,38 +316,99 @@ func ConvertHelmValsToMap(a []struct {
 
 }
 
+// manifestExtensions are the file extensions considered when expanding a
+// dir:// manifest reference, mirroring the file types `kubectl apply -f`
+// recognizes when given a directory.
+var manifestExtensions = map[string]bool{
+	".yaml": true,
+	".yml":  true,
+	".json": true,
+}
+
+// expandManifestRef expands a single manifest reference into one or more
+// concrete references to apply. A dir:// reference points at a directory on
+// local disk and is expanded into a sorted list of file:// references for the
+// manifest files (.yaml, .yml, .json) directly inside it, mirroring
+// `kubectl apply -f <dir>` (non-recursive). Any other reference is returned
+// unchanged as a single-element slice.
+func expandManifestRef(m string) ([]string, error) {
+	if !strings.HasPrefix(m, "dir://") {
+		return []string{m}, nil
+	}
+
+	// Strip the scheme to get the on-disk path.
+	path := strings.TrimPrefix(m, "dir://")
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read directory %q: %w", path, err)
+	}
+
+	// Collect manifest files directly inside the directory (non-recursive).
+	var files []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if !manifestExtensions[strings.ToLower(filepath.Ext(e.Name()))] {
+			continue
+		}
+		files = append(files, "file://"+filepath.Join(path, e.Name()))
+	}
+
+	// Apply in a deterministic order, matching kubectl's alphabetical sort.
+	sort.Strings(files)
+
+	return files, nil
+}
+
 // ApplyManifests applies the given Kubernetes manifests to the cluster. It is
 // used for both pre-helm and post-install manifests. It is best effort: a
 // failure reading, parsing, or applying one manifest does not stop the rest.
 // All failures are logged individually and returned as an aggregated error
 // (nil if everything succeeded).
+//
+// Each manifest reference may be an http://, https://, or file:// URL, or a
+// dir:// reference. A dir:// reference is expanded into the manifest files
+// directly inside that directory, mirroring `kubectl apply -f <dir>`.
 func ApplyManifests(manifests []string, ctx context.Context, cfg *rest.Config) error {
 	var failures int
 
 	// Loop through the manifests and apply them
 	for _, m := range manifests {
-		// Get the bytes from the manifest
-		data, err := getPostInstallBytes(m)
+		// Expand dir:// references into individual file:// references. Other
+		// references are returned unchanged.
+		refs, err := expandManifestRef(m)
 		if err != nil {
-			log.Warnf("Skipping manifest %q: could not read: %v", m, err)
+			log.Warnf("Skipping manifest %q: %v", m, err)
 			failures++
 			continue
 		}
 
-		// Split the YAML into a slice of bytes
-		yamls, err := SplitYAML(data)
-		if err != nil {
-			log.Warnf("Skipping manifest %q: could not parse YAML: %v", m, err)
-			failures++
-			continue
-		}
-
-		// Loop through the yamls and apply them. A failure applying one
-		// document does not stop the remaining documents or manifests.
-		for _, y := range yamls {
-			if err := DoSSA(ctx, cfg, y); err != nil {
-				log.Warnf("Failed to apply a resource from manifest %q: %v", m, err)
+		for _, ref := range refs {
+			// Get the bytes from the manifest
+			data, err := getPostInstallBytes(ref)
+			if err != nil {
+				log.Warnf("Skipping manifest %q: could not read: %v", ref, err)
 				failures++
+				continue
+			}
+
+			// Split the YAML into a slice of bytes
+			yamls, err := SplitYAML(data)
+			if err != nil {
+				log.Warnf("Skipping manifest %q: could not parse YAML: %v", ref, err)
+				failures++
+				continue
+			}
+
+			// Loop through the yamls and apply them. A failure applying one
+			// document does not stop the remaining documents or manifests.
+			for _, y := range yamls {
+				if err := DoSSA(ctx, cfg, y); err != nil {
+					log.Warnf("Failed to apply a resource from manifest %q: %v", ref, err)
+					failures++
+				}
 			}
 		}
 	}

@@ -48,6 +48,7 @@ postInstallManifests:
 BeKind supports multiple ways to specify manifest locations:
 
 - **Local files**: `file://` URLs with absolute paths
+- **Local directories**: `dir://` URLs with absolute paths
 - **HTTP(S) URLs**: Direct links to manifests served as `text/plain`
 
 You can mix and match both types in the same configuration.
@@ -77,6 +78,21 @@ postInstallManifests:
 postInstallManifests:
   - "file:///C:/Users/username/k8s/app.yaml"
 ```
+
+### Directory URLs
+
+A `dir://` URL points at a local directory and applies every manifest inside
+it, working just like `kubectl apply -f <dir>`:
+
+```yaml
+postInstallManifests:
+  - "dir:///home/user/manifests/"
+```
+
+{: .note }
+Only files ending in `.yaml`, `.yml`, or `.json` directly inside the directory
+are applied, and they are applied in alphabetical order. The directory is not
+traversed recursively. Use absolute paths with the `dir://` prefix.
 
 ### HTTP(S) URLs
 
