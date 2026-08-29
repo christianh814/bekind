@@ -6,7 +6,7 @@ nav_order: 1
 description: "Install Helm charts automatically"
 ---
 
-# Helm Charts
+# Helm Chart3
 {: .no_toc }
 
 ## Table of contents
@@ -79,7 +79,6 @@ helmCharts:
 Reference stacks in your BeKind configuration using the `helmStack` key:
 
 ```yaml
-domain: "7f000001.nip.io"
 helmStack:
   - name: argocd-cilium
   - name: monitoring

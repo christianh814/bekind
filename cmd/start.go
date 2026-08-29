@@ -24,6 +24,7 @@ import (
 	"github.com/christianh814/bekind/pkg/helm"
 	"github.com/christianh814/bekind/pkg/kind"
 	"github.com/christianh814/bekind/pkg/utils"
+	"github.com/christianh814/bekind/pkg/vars"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -92,6 +93,7 @@ func ResetGlobalVars() {
 	pullImages = true
 	Domain = "127.0.0.1.nip.io"
 	KindImageVersion = ""
+	configVars = nil
 }
 
 // startCmd represents the start command
@@ -115,11 +117,9 @@ on the configuration file that is passed`,
 		}
 
 		// Get "domain" from the config file if it exists using viper
-		// Leaving this here although not using "domain" anymore, it might
-		// be useful in the future.
 		if viper.GetString("domain") != "" {
 			Domain = viper.GetString("domain")
-			log.Warn("Using custom domain")
+			log.Warn("The \"domain\" field is deprecated and will be removed in the next release. Use \"vars\" instead.")
 		}
 
 		// Get "kindImageVersion" from the config file if it exists using viper
@@ -182,9 +182,10 @@ on the configuration file that is passed`,
 			clusterName = viper.GetString("name")
 		}
 
-		// Set config file back to default for Viper
+		// Set config file back to default for Viper, re-expanding vars
 		viper.SetConfigFile(cfgFile)
 		viper.ReadInConfig()
+		expandConfigVars()
 
 		// Try and start the kind cluster
 		err = kind.CreateKindCluster(clusterName, KindImageVersion)
@@ -256,6 +257,13 @@ on the configuration file that is passed`,
 					os.Exit(1)
 				}
 
+				// Expand ${{ .vars.* }} references using the main config's vars
+				stackData, err = vars.Expand(stackData, configVars)
+				if err != nil {
+					log.Errorf("Failed to expand vars in stack file %s: %v", stackPath, err)
+					os.Exit(1)
+				}
+
 				// Parse stack.yaml
 				var stackConfig struct {
 					HelmCharts []struct {
@@ -315,6 +323,12 @@ on the configuration file that is passed`,
 
 		if configFileToRead != "" && viper.IsSet("helmCharts") {
 			yamlData, err := os.ReadFile(configFileToRead)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Expand ${{ .vars.* }} references before parsing
+			yamlData, err = vars.Expand(yamlData, configVars)
 			if err != nil {
 				log.Fatal(err)
 			}
