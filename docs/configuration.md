@@ -85,12 +85,13 @@ postInstallPatches:
 
 **Type**: `array`  
 **Optional**: Yes  
-**Description**: List of key/value pair variables that can be referenced anywhere else in the configuration (including Helm values and Helm Stack files) using `${{ .vars.<name> }}`. A variable's value may reference variables defined earlier in the list. Names that match a BeKind configuration field (like `loadDockerImages` or `kindConfig`) are reserved.
+**Description**: List of key/value pair variables that can be referenced anywhere else in the configuration (including Helm values and Helm Stack files) using `{% raw %}${{ .vars.<name> }}{% endraw %}`. A variable's value may reference variables defined earlier in the list. Names that match a BeKind configuration field (like `loadDockerImages` or `kindConfig`) are reserved.
 
 See the [Variables feature documentation]({% link features/variables.md %}) for detailed information.
 
 **Example**:
 
+{% raw %}
 ```yaml
 vars:
   - name: ip
@@ -108,6 +109,7 @@ helmCharts:
         domains:
           - ${{ .vars.domainName }}
 ```
+{% endraw %}
 
 ---
 

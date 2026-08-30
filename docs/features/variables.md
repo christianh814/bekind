@@ -29,8 +29,9 @@ BeKind lets you define key/value pair variables at the top of your configuration
 
 ## Configuration
 
-Declare variables under the top-level `vars` key as a list of `name`/`value` pairs, then reference them with `${{ .vars.<name> }}`:
+Declare variables under the top-level `vars` key as a list of `name`/`value` pairs, then reference them with `{% raw %}${{ .vars.<name> }}{% endraw %}`:
 
+{% raw %}
 ```yaml
 vars:
   - name: myimage
@@ -39,9 +40,11 @@ loadDockerImages:
   images:
     - ${{ .vars.myimage }}
 ```
+{% endraw %}
 
 Variables work anywhere in the configuration, including nested Helm values:
 
+{% raw %}
 ```yaml
 vars:
   - name: domainName
@@ -59,6 +62,7 @@ helmCharts:
         domains:
           - ${{ .vars.domainName }}
 ```
+{% endraw %}
 
 ---
 
@@ -78,6 +82,7 @@ Names that match a BeKind configuration field (for example `loadDockerImages`, `
 **Required**: Yes  
 **Description**: The value of the variable. A value may reference variables defined **earlier** in the list:
 
+{% raw %}
 ```yaml
 vars:
   - name: ip
@@ -85,6 +90,7 @@ vars:
   - name: domainName
     value: ${{ .vars.ip }}.nip.io
 ```
+{% endraw %}
 
 ---
 
@@ -101,6 +107,7 @@ helmStack:
   - name: argocd
 ```
 
+{% raw %}
 ```yaml
 # ~/.bekind/helmstack/argocd/stack.yaml
 helmCharts:
@@ -114,6 +121,7 @@ helmCharts:
       global:
         domain: argocd.${{ .vars.domainName }}
 ```
+{% endraw %}
 
 ---
 
@@ -126,7 +134,7 @@ BeKind fails fast with a clear error if:
 - The configuration references an undefined variable (catches typos)
 
 {: .note }
-Referencing an undefined variable is always an error, so a typo like `${{ .vars.myimge }}` will stop cluster creation instead of being silently ignored.
+Referencing an undefined variable is always an error, so a typo like `{% raw %}${{ .vars.myimge }}{% endraw %}` will stop cluster creation instead of being silently ignored.
 
 ---
 

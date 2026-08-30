@@ -31,7 +31,7 @@ Perform automated actions on Kubernetes resources, such as restarting deployment
 Apply JSON Patch operations to Kubernetes resources for fine-grained modifications after installation.
 
 ### [Variables]({% link features/variables.md %})
-Define key/value pair variables once and reference them anywhere in your configuration with `${{ .vars.<name> }}`, including Helm values and Helm Stack files.
+Define key/value pair variables once and reference them anywhere in your configuration with `{% raw %}${{ .vars.<name> }}{% endraw %}`, including Helm values and Helm Stack files.
 
 ---
 
