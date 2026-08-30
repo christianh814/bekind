@@ -31,7 +31,9 @@ bekind start --config /path/to/custom/config.yaml
 Here's a complete example showing all available configuration options:
 
 ```yaml
-domain: "7f000001.nip.io"
+vars:
+  - name: domainName
+    value: 7f000001.nip.io
 kindImageVersion: "kindest/node:v1.34.0"
 helmCharts:
   - url: "https://kubernetes.github.io/ingress-nginx"
@@ -79,6 +81,36 @@ postInstallPatches:
 
 ## Configuration Options
 
+### vars
+
+**Type**: `array`  
+**Optional**: Yes  
+**Description**: List of key/value pair variables that can be referenced anywhere else in the configuration (including Helm values and Helm Stack files) using `${{ .vars.<name> }}`. A variable's value may reference variables defined earlier in the list. Names that match a BeKind configuration field (like `loadDockerImages` or `kindConfig`) are reserved.
+
+See the [Variables feature documentation]({% link features/variables.md %}) for detailed information.
+
+**Example**:
+
+```yaml
+vars:
+  - name: ip
+    value: 7f000001
+  - name: domainName
+    value: ${{ .vars.ip }}.nip.io
+helmCharts:
+  - url: "https://example.com/charts"
+    repo: "example"
+    chart: "test"
+    release: "test"
+    namespace: "mynamespace"
+    valuesObject:
+      controller:
+        domains:
+          - ${{ .vars.domainName }}
+```
+
+---
+
 ### domain
 
 **Type**: `string`  
@@ -89,8 +121,8 @@ postInstallPatches:
 domain: "7f000001.nip.io"
 ```
 
-{: .note }
-Currently unused/ignored in most workflows, but reserved for future features.
+{: .warning }
+**Deprecated**: The `domain` field is deprecated and will be removed in the next release. Use [`vars`]({% link features/variables.md %}) instead.
 
 ---
 
@@ -384,7 +416,6 @@ kindImageVersion: "kindest/node:v1.34.0"
 ### Development Cluster with Ingress
 
 ```yaml
-domain: "127.0.0.1.nip.io"
 kindImageVersion: "kindest/node:v1.34.0"
 kindConfig: |
   kind: Cluster
@@ -412,6 +443,7 @@ helmCharts:
 
 Learn more about specific features:
 
+- [Variables]({% link features/variables.md %})
 - [Helm Charts]({% link features/helm-charts.md %})
 - [Loading Docker Images]({% link features/loading-images.md %})
 - [Post Install Manifests]({% link features/post-install-manifests.md %})

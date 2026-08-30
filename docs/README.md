@@ -48,7 +48,8 @@ docs/
     ├── helm-charts.md             # Helm charts feature
     ├── loading-images.md          # Image loading feature
     ├── post-install-manifests.md  # Manifests feature
-    └── post-install-actions.md    # Actions feature
+    ├── post-install-actions.md    # Actions feature
+    └── variables.md               # Variables feature
 ```
 
 ## Publishing

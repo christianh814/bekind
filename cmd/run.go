@@ -76,6 +76,9 @@ var runCmd = &cobra.Command{
 				}
 			}
 
+			// Expand ${{ .vars.* }} references in the profile config
+			expandConfigVars()
+
 			// If the view flag is set, show the config
 			if view {
 				// Crude, but it works

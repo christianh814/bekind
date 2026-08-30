@@ -29,6 +29,7 @@ BeKind is a powerful CLI tool that simplifies the process of creating and config
 - **Image Pre-loading**: Load Docker images into your cluster before deployment
 - **Manifest Application**: Apply Kubernetes manifests automatically after cluster creation
 - **Post-Install Actions**: Perform automated actions like resource restarts and deletions
+- **Variables**: Define key/value pairs once and reference them anywhere in your configuration
 - **Configuration Profiles**: Save and reuse cluster configurations
 
 ### Quick Example
@@ -76,6 +77,7 @@ Whether you're developing applications, testing Kubernetes features, or creating
 - [Loading Images]({% link features/loading-images.md %}) - Pre-load Docker images
 - [Post Install Manifests]({% link features/post-install-manifests.md %}) - Apply Kubernetes manifests
 - [Post Install Actions]({% link features/post-install-actions.md %}) - Automate resource operations
+- [Variables]({% link features/variables.md %}) - Define reusable key/value pairs
 
 ---
 

@@ -30,6 +30,9 @@ Perform automated actions on Kubernetes resources, such as restarting deployment
 ### [Post Install Patches]({% link features/post-install-patches.md %})
 Apply JSON Patch operations to Kubernetes resources for fine-grained modifications after installation.
 
+### [Variables]({% link features/variables.md %})
+Define key/value pair variables once and reference them anywhere in your configuration with `${{ .vars.<name> }}`, including Helm values and Helm Stack files.
+
 ---
 
 Each feature can be configured independently in your BeKind configuration file. You can use one, some, or all features depending on your needs.

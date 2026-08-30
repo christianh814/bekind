@@ -16,9 +16,11 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
+	"github.com/christianh814/bekind/pkg/vars"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,10 +30,13 @@ var cfgFile string
 var KubeConfig string
 var logLevel string
 
+// configVars holds the variables parsed from the config file's top-level "vars" section
+var configVars map[string]string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "bekind",
-	Version: "v0.12.0",
+	Version: "v0.13.0",
 	Short:   "Installs an opinionated KIND cluster",
 	Long: `This command installs a KIND cluster.
 The KIND cluster is then configured based on what configuration file is passed.`,
@@ -110,4 +115,34 @@ func initConfig() {
 		}
 	}
 
+	expandConfigVars()
+}
+
+// expandConfigVars re-reads the loaded config file, expanding any
+// ${{ .vars.<name> }} references before handing the result back to viper.
+func expandConfigVars() {
+	configFile := viper.ConfigFileUsed()
+	if configFile == "" {
+		return
+	}
+
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		log.Fatal("Error reading config file: ", err)
+	}
+
+	configVars, err = vars.Parse(data)
+	if err != nil {
+		log.Fatal("Error in config vars: ", err)
+	}
+
+	expanded, err := vars.Expand(data, configVars)
+	if err != nil {
+		log.Fatal("Error expanding config vars: ", err)
+	}
+
+	viper.SetConfigType("yaml")
+	if err := viper.ReadConfig(bytes.NewReader(expanded)); err != nil {
+		log.Fatal("Error reading expanded config: ", err)
+	}
 }
